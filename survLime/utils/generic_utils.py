@@ -9,15 +9,40 @@ from math import sqrt
 import matplotlib.pyplot as plt
 from torch.nn import Module
 from sklearn.metrics import mean_squared_error
-from sklearn.ensemble import RandomSurvivalForest
+from sksurv.ensemble import RandomSurvivalForest
 from sksurv.linear_model import CoxPHSurvivalAnalysis
 
-    
+
+
+def fill_matrix_with_total_times(total_times : list,
+                                 predicted_surv : numpy.ndarray,
+                                 event_times : numpy.ndarray):
+    """The model only outputs a prediction for the event times
+       this function fills the gaps between them
+
+    Args:
+    total_times    : total number of time steps
+    predicted_surv : array with the predicted survival times
+    event_times    : array with the times where an event happened
+
+    Returns:
+    gl : list with a prediction for all the survival times
+
+    """
+    gl = []
+    for time in total_times:
+        if time in event_times:
+            time_index = event_times.index(time)
+            gl.append(predicted_surv[time_index])
+        else:
+            gl.append(gl[-1])
+    return gl
+
 def compare_survival_times(bb_model : Union[CoxPHSurvivalAnalysis, Module, RandomSurvivalForest],
                            coefs : numpy.ndarray,
                            X_train : pd.DataFrame, y_train : numpy.ndarray, X_test : pd.DataFrame):
     """Trains a Cox model with the coefs obtained with cvxpy and plots the survival 
-       times as well as the 
+       times.
     
     Args:
         bb_model: model that we want to find the model_interpretable to
@@ -29,27 +54,41 @@ def compare_survival_times(bb_model : Union[CoxPHSurvivalAnalysis, Module, Rando
     Returns:
         Plots
     """
+    times_train = [x[1] for x in y_train]
+    times_to_fill = list(set(times_train)); times_to_fill.sort()
+    
     model_interpretable = CoxPHSurvivalAnalysis()
     model_interpretable.fit(X_train, y_train)
     model_interpretable.coef_ = coefs
-
-    preds_cox      = bb_model.predict_survival_function(X_test)
+    
+    # Obtain the predictions from both models
+    preds_bb      = bb_model.predict_survival_function(X_test)
     preds_survlime = model_interpretable.predict_survival_function(X_test)
+    #import ipdb;ipdb.set_trace()
+    preds_bb_y  = numpy.mean([x.y for x in preds_bb], axis=0)
+    preds_bb_y  = numpy.mean([fill_matrix_with_total_times(times_to_fill, x.y, list(x.x)) for x in preds_bb], axis=0)
 
-    preds_cox_y  = numpy.mean([x.y for x in preds_cox], axis=0)
     preds_surv_y = numpy.mean([x.y for x in preds_survlime], axis=0)
-
-    plt.plot(preds_cox_y, label='CoxPH')
-    plt.plot(preds_surv_y, label='SurvLIME')
-    plt.title('Mean survival time comparison')
-    plt.legend()
-    rmse = sqrt(mean_squared_error(preds_cox_y, preds_surv_y))
-    print(f' RMSE between the two curves is {round(rmse, 3)}')
-
     if isinstance(bb_model, CoxPHSurvivalAnalysis):
+        plot_num=2
+        # Create axes and access them through the returned array
+        fig, axs = plt.subplots(1, plot_num, figsize=(15,5))
         df = pd.DataFrame(columns=bb_model.feature_names_in_, 
-                  data=[coefs, bb_model.coef_], index=['SurvLIME','CoxPH'])
-        df.transpose().plot.bar()
+                  data=[bb_model.coef_, coefs], index=['SurvLIME','CoxPH'])
+        df.transpose().plot.bar(ax=axs[0])
+        axs[0].set_title('Coefficient values for bb model and survlime')
+        axs[1].step(preds_bb[0].x, preds_bb_y, where="post", label='BB model')
+        axs[1].step(preds_survlime[0].x, preds_surv_y, where="post", label='SurvLIME')
+    # If we are using other model, we don't have coefficients to compare with
+    else:
+        import ipdb;ipdb.set_trace()  
+        plt.step(preds_survlime[0].x, preds_bb_y, where="post", label='BB model')
+        plt.step(preds_survlime[0].x, preds_surv_y, where="post", label='SurvLIME')
+        plt.legend()
+    #rmse = sqrt(mean_squared_error(preds_cox_y, preds_surv_y))
+
+    #axs[plot_num-1].set_title(f'Mean survival time comparison RMSE: {rmse:.3}')
+    #axs[plot_num-1].legend()
 
 
 def has_arg(fn, arg_name):
