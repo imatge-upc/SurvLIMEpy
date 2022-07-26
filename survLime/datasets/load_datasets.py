@@ -14,6 +14,8 @@ def Loader(dataset_name: str = 'veterans') -> list([pd.DataFrame, np.ndarray]):
 
 
 class RandomSurvivalData:
+    """Generate spherical random survival data."""
+
     def __init__(
         self,
         center: list[float],
@@ -23,14 +25,28 @@ class RandomSurvivalData:
         lambda_weibull: float,
         v_weibull: float,
     ) -> None:
+        """Init.
+
+        Args:
+            center (float): center of the sphere.
+            radius (float): radius of the sphere.
+            coefficients (list): value of the covariates.
+            prob_event (float): probability of an event occurring.
+            lambda_weibull (float): scale parameter of a Weibull distribution.
+            v_weibull (float): shape parameter of a Weibull distribution.
+
+        Returns:
+            None
+
+        """
         if len(center) != len(coefficients):
             raise ValueError(
-                'length of center and length of coefficients must be equal'
+                'length of center and length of coefficients must be equal.'
             )
         if lambda_weibull <= 0:
-            raise ValueError('lambda_weibull must be greater than 0')
+            raise ValueError('lambda_weibull must be greater than 0.')
         if v_weibull <= 0:
-            raise ValueError('v_weibull must be greater than 0')
+            raise ValueError('v_weibull must be greater than 0.')
         self.center = center
         self.radius = radius
         self.coefficients = coefficients
@@ -39,6 +55,15 @@ class RandomSurvivalData:
         self.v_weibull = v_weibull
 
     def spherical_data(self, num_points: int) -> np.ndarray:
+        """Generates random data in the p-dimensional sphere (covariates).
+
+        Args:
+            num_points (int): number of individuals to generate.
+
+        Returns:
+            np.ndarray: matrix with num_points rows and p columns, where p is the dimension of the space.
+
+        """
         center = self.center
         radius = self.radius
 
@@ -64,28 +89,60 @@ class RandomSurvivalData:
         return X_location
 
     def survival_times(self, num_points: int, X: np.array) -> np.array:
+        """Generates survival times following a Weibull distribution.
+
+        Args:
+            num_points (int):  number of individuals to generate.
+            X (np.array): matrix with num_points rows and p columns, where p is the dimension of the space.
+
+        Returns:
+            np.array: a column vector containing the survival times.
+
+        """
         u = np.random.uniform(size=(num_points, 1))
         lamba_val = self.lambda_weibull
         v = self.v_weibull
         b = np.reshape(self.coefficients, newshape=(len(self.coefficients), 1))
         num = -np.log(u)
         den = lamba_val * np.exp(np.dot(X, b))
-        T = (num / den) ** (1 / v)
-        T = np.where(T > 2000, 2000, T)
-        return T
+        # Use a Weibull distribution
+        time_to_event = (num / den) ** (1 / v)
+        time_to_event = np.where(time_to_event > 2000, 2000, time_to_event)
+        return time_to_event
 
     def random_event(self, num_points: int) -> np.array:
+        """Generates random events following a binomial distributiom with probabilty `prob_event`.
+
+        Args:
+            num_points (int):  number of individuals to generate.
+
+        Returns:
+            np.array: a column vector containing the random events.
+
+        """
         prob_event = self.prob_event
         return np.where(np.random.uniform(size=num_points) <= prob_event, True, False)
 
     def random_survival_data(self, num_points: int) -> tuple:
+        """Generates random survival data.
+
+        Args:
+            num_points (int):  number of individuals to generate.
+
+        Returns:
+            tuple: (X, time_to_event, delta), where:
+                - X: matrix with num_points rows and p columns, where p is the dimension of the space.
+                - time_to_event: a column vector containing the survival times.
+                - delta: a column vector containing the random events.
+
+        """
         # Get spherical data
         X = self.spherical_data(num_points=num_points)
 
         # Get random survival time
-        T = self.survival_times(num_points=num_points, X=X)
+        time_to_event = self.survival_times(num_points=num_points, X=X)
 
         # Get event variable
         delta = self.random_event(num_points=num_points)
 
-        return (X, T, delta)
+        return (X, time_to_event, delta)
