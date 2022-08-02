@@ -4,6 +4,8 @@ import numpy as np
 veteran_path = '/home/carlos.hernandez/PhD/SurvLIME/survLime/datasets/veteran.csv'
 udca_path    = './udca_dataset.csv'
 pbc_path     = './pbc_dataset.csv'
+lung_path    = './lung_dataset.csv'
+
 def Loader(dataset_name : str='veterans') -> list([pd.DataFrame, np.ndarray]):
     """
     Loads a survival dataset, for now it only loads
@@ -20,6 +22,10 @@ def Loader(dataset_name : str='veterans') -> list([pd.DataFrame, np.ndarray]):
                             'copper','alk.phos', 'trig', 'platelet', 'protime',
                             'trt', 'sex', 'hepato', 'spiders', 'edema', 'stage']
         df = pd.read_csv(pbc_path)
+    elif dataset_name='lung':
+        feature_columns = [ 'inst', 'age', 'sex', 'ph.ecog','ph.karno',
+                                    'pat.karno', 'meal.cal', 'wt.loss']
+        df = pd.read_csv(lung_path)
         
         
     
