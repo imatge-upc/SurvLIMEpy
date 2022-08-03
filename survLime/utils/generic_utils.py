@@ -29,13 +29,16 @@ def fill_matrix_with_total_times(total_times : list,
     gl : list with a prediction for all the survival times
 
     """
-    gl = []
-    for time in total_times:
-        if time in event_times:
-            time_index = event_times.index(time)
-            gl.append(predicted_surv[time_index])
-        else:
-            gl.append(gl[-1])
+    gl = [1]
+    for time in range(1, int(max(total_times))):
+        try:
+            if time in event_times:
+                time_index = event_times.index(time)
+                gl.append(predicted_surv[time_index])
+            else:
+                gl.append(gl[-1])
+        except:
+            import ipdb;ipdb.set_trace()
     return gl
 
 def compare_survival_times(bb_model : Union[CoxPHSurvivalAnalysis, Module, RandomSurvivalForest],
@@ -58,7 +61,7 @@ def compare_survival_times(bb_model : Union[CoxPHSurvivalAnalysis, Module, Rando
     times_to_fill = list(set(times_train)); times_to_fill.sort()
     
     model_interpretable = CoxPHSurvivalAnalysis()
-    model_interpretable.fit(X_train, y_train)
+    model_interpretable.fit(X_test, y_train)
     model_interpretable.coef_ = coefs
     
     # Obtain the predictions from both models
@@ -66,9 +69,15 @@ def compare_survival_times(bb_model : Union[CoxPHSurvivalAnalysis, Module, Rando
     preds_survlime = model_interpretable.predict_survival_function(X_test)
     #import ipdb;ipdb.set_trace()
     preds_bb_y  = numpy.mean([x.y for x in preds_bb], axis=0)
-    preds_bb_y  = numpy.mean([fill_matrix_with_total_times(times_to_fill, x.y, list(x.x)) for x in preds_bb], axis=0)
+   
+    # We need to do this to have the same size as the cox output
+    if isinstance(bb_model, RandomSurvivalForest):
+        preds_bb_y  = numpy.mean([fill_matrix_with_total_times(times_to_fill, x.y, list(x.x)) for x in preds_bb], axis=0)
 
     preds_surv_y = numpy.mean([x.y for x in preds_survlime], axis=0)
+
+    # 
+    rmse = sqrt(mean_squared_error(preds_bb_y, preds_surv_y))
     if isinstance(bb_model, CoxPHSurvivalAnalysis):
         plot_num=2
         # Create axes and access them through the returned array
@@ -79,17 +88,13 @@ def compare_survival_times(bb_model : Union[CoxPHSurvivalAnalysis, Module, Rando
         axs[0].set_title('Coefficient values for bb model and survlime')
         axs[1].step(preds_bb[0].x, preds_bb_y, where="post", label='BB model')
         axs[1].step(preds_survlime[0].x, preds_surv_y, where="post", label='SurvLIME')
+        axs[1].set_title(f'Mean survival time comparison RMSE: {rmse:.3}')
     # If we are using other model, we don't have coefficients to compare with
     else:
-        import ipdb;ipdb.set_trace()  
         plt.step(preds_survlime[0].x, preds_bb_y, where="post", label='BB model')
         plt.step(preds_survlime[0].x, preds_surv_y, where="post", label='SurvLIME')
         plt.legend()
-    #rmse = sqrt(mean_squared_error(preds_cox_y, preds_surv_y))
-
-    #axs[plot_num-1].set_title(f'Mean survival time comparison RMSE: {rmse:.3}')
-    #axs[plot_num-1].legend()
-
+        plt.title(f'Mean survival time comparison RMSE: {rmse:.3}')
 
 def has_arg(fn, arg_name):
     """Checks if a callable accepts a given keyword argument.
