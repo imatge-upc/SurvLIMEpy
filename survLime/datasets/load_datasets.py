@@ -82,7 +82,7 @@ class Loader():
         # Then convert the data and the features to three splits
         # and standarize them
         y = Surv.from_arrays(events, times)
-        X_train, X_test, y_train, y_test = train_test_split(x_pre.copy(), y, test_size=0.05, random_state=1)
+        X_train, X_test, y_train, y_test = train_test_split(x_pre.copy(), y, test_size=0.40, random_state=1)
         X_val, X_test, y_val, y_test = train_test_split(X_test.copy(), y_test, test_size=0.5, random_state=1)
 
 

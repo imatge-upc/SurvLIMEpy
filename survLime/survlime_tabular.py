@@ -266,10 +266,10 @@ class LimeTabularExplainer(object):
             def kernel(d, kernel_width):
                 return np.sqrt(np.exp(-(d ** 2) / kernel_width ** 2))
 
-        kernel_fn = partial(kernel, kernel_width=kernel_width)
+        self.kernel_fn = partial(kernel, kernel_width=kernel_width)
         
         self.feature_selection = feature_selection
-        self.base = lime_base.LimeBase(kernel_fn, verbose, random_state=self.random_state)
+        self.base = lime_base.LimeBase(self.kernel_fn, verbose, random_state=self.random_state)
         self.class_names = class_names
 
         # Though set has no role to play if training data stats are provided
@@ -380,13 +380,12 @@ class LimeTabularExplainer(object):
         # SurvLIME changes
         yss = predict_fn(inverse)
         
-        times_to_fill = list(set(self.times_train))
+        times_to_fill = list(set(self.train_times))
         times_to_fill.sort()
         H_i_j_wc = [fill_matrix_with_total_times(times_to_fill, x.y, list(x.x)) for x in yss]
-        log_correction = [x/log(x+0.00001) for x in H_i_j_wc]
+        log_correction = [np.divide(np.array(x), np.log(np.array(x)+0.0001)) for x in H_i_j_wc]
         
-        kernel_fn = partial(kernel, kernel_width=5)
-        weights = kernel_fn(distances)
+        weights = self.kernel_fn(distances)
         
         # We want to use this to solve the optimization problem
         return H_i_j_wc, weights, log_correction, H_i_j_wc, self.H0_t_, scaled_data

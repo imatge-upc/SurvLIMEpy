@@ -2,6 +2,8 @@ from typing import Union
 import sys
 import inspect
 import types
+import scipy as sp
+import json
 
 import numpy
 import pandas as pd
@@ -13,6 +15,7 @@ from sksurv.ensemble import RandomSurvivalForest
 from sksurv.linear_model import CoxPHSurvivalAnalysis
 
 
+from survLime import explanation
 
 def fill_matrix_with_total_times(total_times : list,
                                  predicted_surv : numpy.ndarray,
@@ -30,7 +33,7 @@ def fill_matrix_with_total_times(total_times : list,
 
     """
     gl = [1]
-    for time in range(1, int(max(total_times))):
+    for time in total_times:
         try:
             if time in event_times:
                 time_index = event_times.index(time)
@@ -61,7 +64,7 @@ def compare_survival_times(bb_model : Union[CoxPHSurvivalAnalysis, Module, Rando
     times_to_fill = list(set(times_train)); times_to_fill.sort()
     
     model_interpretable = CoxPHSurvivalAnalysis()
-    model_interpretable.fit(X_test, y_train)
+    model_interpretable.fit(X_train, y_train)
     model_interpretable.coef_ = coefs
     
     # Obtain the predictions from both models
@@ -73,9 +76,9 @@ def compare_survival_times(bb_model : Union[CoxPHSurvivalAnalysis, Module, Rando
     # We need to do this to have the same size as the cox output
     if isinstance(bb_model, RandomSurvivalForest):
         preds_bb_y  = numpy.mean([fill_matrix_with_total_times(times_to_fill, x.y, list(x.x)) for x in preds_bb], axis=0)
+        import ipdb;ipdb.set_trace()
 
     preds_surv_y = numpy.mean([x.y for x in preds_survlime], axis=0)
-
     # 
     rmse = sqrt(mean_squared_error(preds_bb_y, preds_surv_y))
     if isinstance(bb_model, CoxPHSurvivalAnalysis):
@@ -130,3 +133,92 @@ def has_arg(fn, arg_name):
             return False
         return (parameter.kind in (inspect.Parameter.POSITIONAL_OR_KEYWORD,
                                    inspect.Parameter.KEYWORD_ONLY))
+
+class TableDomainMapper(explanation.DomainMapper):
+    """Maps feature ids to names, generates table views, etc"""
+
+    def __init__(self, feature_names, feature_values, scaled_row,
+                 categorical_features, discretized_feature_names=None,
+                 feature_indexes=None):
+        """Init.
+
+        Args:
+            feature_names: list of feature names, in order
+            feature_values: list of strings with the values of the original row
+            scaled_row: scaled row
+            categorical_features: list of categorical features ids (ints)
+            feature_indexes: optional feature indexes used in the sparse case
+        """
+        self.exp_feature_names = feature_names
+        self.discretized_feature_names = discretized_feature_names
+        self.feature_names = feature_names
+        self.feature_values = feature_values
+        self.feature_indexes = feature_indexes
+        self.scaled_row = scaled_row
+        if sp.sparse.issparse(scaled_row):
+            self.all_categorical = False
+        else:
+            self.all_categorical = len(categorical_features) == len(scaled_row)
+        self.categorical_features = categorical_features
+
+    def map_exp_ids(self, exp):
+        """Maps ids to feature names.
+
+        Args:
+            exp: list of tuples [(id, weight), (id,weight)]
+
+        Returns:
+            list of tuples (feature_name, weight)
+        """
+        names = self.exp_feature_names
+        if self.discretized_feature_names is not None:
+            names = self.discretized_feature_names
+        return [(names[x[0]], x[1]) for x in exp]
+
+    def visualize_instance_html(self,
+                                exp,
+                                label,
+                                div_name,
+                                exp_object_name,
+                                show_table=True,
+                                show_all=False):
+        """Shows the current example in a table format.
+
+        Args:
+             exp: list of tuples [(id, weight), (id,weight)]
+             label: label id (integer)
+             div_name: name of div object to be used for rendering(in js)
+             exp_object_name: name of js explanation object
+             show_table: if False, don't show table visualization.
+             show_all: if True, show zero-weighted features in the table.
+        """
+        if not show_table:
+            return ''
+        weights = [0] * len(self.feature_names)
+        for x in exp:
+            weights[x[0]] = x[1]
+        if self.feature_indexes is not None:
+            # Sparse case: only display the non-zero values and importances
+            fnames = [self.exp_feature_names[i] for i in self.feature_indexes]
+            fweights = [weights[i] for i in self.feature_indexes]
+            if show_all:
+                out_list = list(zip(fnames,
+                                    self.feature_values,
+                                    fweights))
+            else:
+                out_dict = dict(map(lambda x: (x[0], (x[1], x[2], x[3])),
+                                zip(self.feature_indexes,
+                                    fnames,
+                                    self.feature_values,
+                                    fweights)))
+                out_list = [out_dict.get(x[0], (str(x[0]), 0.0, 0.0)) for x in exp]
+        else:
+            out_list = list(zip(self.exp_feature_names,
+                                self.feature_values,
+                                weights))
+            if not show_all:
+                out_list = [out_list[x[0]] for x in exp]
+        ret = u'''
+            %s.show_raw_tabular(%s, %d, %s);
+        ''' % (exp_object_name, json.dumps(out_list, ensure_ascii=False), label, div_name)
+        return ret
