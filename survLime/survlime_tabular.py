@@ -615,21 +615,24 @@ class LimeTabularExplainer(object):
         #*(times_to_fill[j+1]-times_to_fill[j])
         # We are having Conconcave problems here!!
         b = cp.Variable(num_features)
-        cost = [weights[k]*cp.sum_squares((log(H_i_j_wc[k][j]+epsilon) - log(H0_t_[j]+epsilon) - b @ scaled_data[k]))\
-                 for k in range(num_pat) for j in range(num_times)] 
+       #cost = [weights[k]*cp.sum_squares((log(H_i_j_wc[k][j]+epsilon) - log(H0_t_[j]+epsilon) - b @ scaled_data[k]))\
+       #         for k in range(num_pat) for j in range(num_times)] 
         #cost = [weights[k]*cp.sum_squares(cp.square(log_correction[k][j])(log(H_i_j_wc[k][j]+epsilon) - log(H0_t_[j]+epsilon) - b @ scaled_data[k]))\
                  #for k in range(num_pat) for j in range(num_times)] # 
         #cost = [weights[k]*cp.norm((log(H_i_j_wc[k][j]+epsilon) - log(Ho_t_[j]+epsilon) - b @ scaled_data[k]),'inf') \
         #                                            for k in range(num_pat) for j in range(num_times)]
+        cost = 0
+        for k in range(num_pat):
+            for j in range(num_times):
+                cost += weights[k]*cp.sum_squares(cp.log(H_i_j_wc[k][j]+epsilon) - cp.log(H0_t_[j]+epsilon) - b @ scaled_data[k])
         print(f'time creating the cost list {timeit.default_timer() - start_time}')
+       #start_time = timeit.default_timer()
+       # cost_sum = cp.sum(cost)
 
+       #print(f'time summing the cost list {timeit.default_timer() - start_time}')
         start_time = timeit.default_timer()
-        cost_sum = cp.sum(cost)
 
-        print(f'time summing the cost list {timeit.default_timer() - start_time}')
-        start_time = timeit.default_timer()
-
-        prob = cp.Problem(cp.Minimize(cost_sum))
+        prob = cp.Problem(cp.Minimize(cost))
 
 
         opt_val = prob.solve(verbose=verbose, max_iter=100000)
