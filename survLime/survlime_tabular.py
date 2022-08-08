@@ -26,6 +26,7 @@ from . import lime_base
 from survLime.utils.generic_utils import fill_matrix_with_total_times
 from sksurv.nonparametric import nelson_aalen_estimator
 from functools import partial
+
 import cvxpy as cp
 from math import log
 import timeit
@@ -115,8 +116,8 @@ class LimeTabularExplainer(object):
         self.training_data_stats = training_data_stats
         
         # SurvLIME changes
-        self.train_events = [x[0] for x in target_data]
-        self.train_times = [x[1] for x in target_data]
+        self.train_events = [y[0] for y in target_data]
+        self.train_times = [y[1] for y in target_data]
 
         self.H0_t_ = nelson_aalen_estimator(self.train_events, self.train_times)[0]
         
@@ -300,7 +301,7 @@ class LimeTabularExplainer(object):
         weights = self.kernel_fn(distances)
         
         # We want to use this to solve the optimization problem
-        return H_i_j_wc, weights, log_correction, H_i_j_wc, self.H0_t_, scaled_data
+        return H_i_j_wc, weights, log_correction,  self.H0_t_, scaled_data
 
         
        # We have to see if this is useful for our case
@@ -511,7 +512,7 @@ class LimeTabularExplainer(object):
             inverse[1:] = self.discretizer.undiscretize(inverse[1:])
         inverse[0] = data_row
         return data, inverse
-
+    
     def __data_inverse(self,
                        data_row,
                        num_samples):
@@ -601,3 +602,37 @@ class LimeTabularExplainer(object):
             inverse[1:] = self.discretizer.undiscretize(inverse[1:])
         inverse[0] = data_row
         return data, inverse
+
+    def solve_opt_problem(self, H_i_j_wc : list, weights :np.ndarray, log_correction: list,
+                          H0_t_ : np.ndarray, scaled_data : np.ndarray, verbose : bool=False) -> np.ndarray:
+        start_time = timeit.default_timer()
+
+        epsilon = 0.00000001
+        num_features = len(self.scaler.mean_) # Is there a nicer way to obtain this rather than using the scaler?
+        num_times = len(set(self.train_times))-1
+        num_pat = len(weights) # Is there a nicer way to obtain this rather than usng the length of the weights
+        #cp.square(log_correction[k][j])
+        #*(times_to_fill[j+1]-times_to_fill[j])
+        # We are having Conconcave problems here!!
+        b = cp.Variable(num_features)
+        cost = [weights[k]*cp.sum_squares((log(H_i_j_wc[k][j]+epsilon) - log(H0_t_[j]+epsilon) - b @ scaled_data[k]))\
+                 for k in range(num_pat) for j in range(num_times)] 
+        #cost = [weights[k]*cp.sum_squares(cp.square(log_correction[k][j])(log(H_i_j_wc[k][j]+epsilon) - log(H0_t_[j]+epsilon) - b @ scaled_data[k]))\
+                 #for k in range(num_pat) for j in range(num_times)] # 
+        #cost = [weights[k]*cp.norm((log(H_i_j_wc[k][j]+epsilon) - log(Ho_t_[j]+epsilon) - b @ scaled_data[k]),'inf') \
+        #                                            for k in range(num_pat) for j in range(num_times)]
+        print(f'time creating the cost list {timeit.default_timer() - start_time}')
+
+        start_time = timeit.default_timer()
+        cost_sum = cp.sum(cost)
+
+        print(f'time summing the cost list {timeit.default_timer() - start_time}')
+        start_time = timeit.default_timer()
+
+        prob = cp.Problem(cp.Minimize(cost_sum))
+
+
+        opt_val = prob.solve(verbose=verbose, max_iter=100000)
+        print(f'time solving the problem {timeit.default_timer() - start_time}')
+        b.value
+        return b.value
