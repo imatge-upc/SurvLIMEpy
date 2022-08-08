@@ -33,6 +33,7 @@ class Loader():
                                 'trt', 'sex', 'hepato', 'spiders', 'edema', 'stage']
             self.categorical_columns = ['edema', 'stage']
             self.df = pd.read_csv(pbc_path)
+            self.df['sex'] = [1 if x=='f' else 0 for x in self.df['sex']]
         elif dataset_name=='lung':
             self.feature_columns = [ 'inst', 'age', 'sex', 'ph.ecog','ph.karno',
                                         'pat.karno', 'meal.cal', 'wt.loss']
@@ -42,7 +43,6 @@ class Loader():
             raise AssertionError(f'The give name {dataset_name} was not found in [veterans, udca, pbc, lung]')
 
     def load_data(self) -> list([pd.DataFrame, np.ndarray]):
-    
         """
         Loads a survival dataset
 
@@ -50,16 +50,14 @@ class Loader():
         x : pd.DataFrame with the unprocessed features
         y : np.ndarray of tuples with (status, time)
         """
-            
-            
-        
         self.df['status'] = [True if x==1 else False for x in self.df['status']]
         self.df['y'] = [(x,y) for x,y in zip(self.df['status'], self.df['time'])]
         y = self.df.pop('y').to_numpy()
         events = [x[0] for x in y]
         times  = [x[1] for x in y]
         x = self.df[self.feature_columns]
-        x.fillna(value=x.mean(), inplace=True)
+
+        x.fillna(value=x.median(), inplace=True)
         
         return x, events, times 
    
@@ -75,7 +73,7 @@ class Loader():
         # Deal with categorical features
         x_pre = x.copy()
         for cat_feat in self.categorical_columns:
-            names = [cat_feat+'_'+name for name in x_pre[cat_feat].unique()]
+            names = [cat_feat+'_'+str(value) for value in x_pre[cat_feat].unique()]
             x_pre[names] = pd.get_dummies(x_pre[cat_feat])
             x_pre.drop(cat_feat, inplace=True, axis=1)
         

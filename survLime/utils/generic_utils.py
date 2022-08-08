@@ -42,6 +42,8 @@ def fill_matrix_with_total_times(total_times : list,
                 gl.append(gl[-1])
         except:
             import ipdb;ipdb.set_trace()
+    # Quickfix to delete the one added at the beggining
+    del gl[0]
     return gl
 
 def compare_survival_times(bb_model : Union[CoxPHSurvivalAnalysis, Module, RandomSurvivalForest],
