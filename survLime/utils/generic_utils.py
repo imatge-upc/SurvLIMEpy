@@ -93,6 +93,7 @@ def compare_survival_times(bb_model : Union[CoxPHSurvivalAnalysis, Module, Rando
         axs[0].set_title('Coefficient values for bb model and survlime')
         axs[1].step(preds_bb[0].x, preds_bb_y, where="post", label='BB model')
         axs[1].step(preds_survlime[0].x, preds_surv_y, where="post", label='SurvLIME')
+        axs[1].legend()
         axs[1].set_title(f'Mean survival time comparison RMSE: {rmse:.3}')
     # If we are using other model, we don't have coefficients to compare with
     else:

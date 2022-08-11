@@ -604,35 +604,47 @@ class LimeTabularExplainer(object):
         return data, inverse
 
     def solve_opt_problem(self, H_i_j_wc : list, weights :np.ndarray, log_correction: list,
-                          H0_t_ : np.ndarray, scaled_data : np.ndarray, verbose : bool=False) -> np.ndarray:
+                          H0_t_ : np.ndarray, scaled_data : np.ndarray, verbose : bool=True) -> np.ndarray:
+        """ Solves the convex problem proposed in: https://arxiv.org/pdf/2003.08371.pdfF
+
+        Args:
+            H_i_j_wc: list: Hazard computed by the bb model
+            weights: np.ndarray :with the weights for every synthetic data point
+            log_correction: list: correction for using log of the hazards for every computed hazard
+            H0_t_: np.ndarray: baseline hazard of the training set
+            scaled_data: np.ndarray : synthetic data points
+            verbose: bool: whether to output cvxpy solver info
+
+        Returns:
+            b.values : np.ndarray : solution to the convex problem
+        """
         start_time = timeit.default_timer()
 
         epsilon = 0.00000001
         num_features = len(self.scaler.mean_) # Is there a nicer way to obtain this rather than using the scaler?
         num_times = len(set(self.train_times))-1
         num_pat = len(weights) # Is there a nicer way to obtain this rather than usng the length of the weights
-        #cp.square(log_correction[k][j])
-        #*(times_to_fill[j+1]-times_to_fill[j])
-        # We are having Conconcave problems here!!
+        times_to_fill = list(set(self.train_times)); times_to_fill.sort()
+
         b = cp.Variable(num_features)
-       #cost = [weights[k]*cp.sum_squares((log(H_i_j_wc[k][j]+epsilon) - log(H0_t_[j]+epsilon) - b @ scaled_data[k]))\
-       #         for k in range(num_pat) for j in range(num_times)] 
-        #cost = [weights[k]*cp.sum_squares(cp.square(log_correction[k][j])(log(H_i_j_wc[k][j]+epsilon) - log(H0_t_[j]+epsilon) - b @ scaled_data[k]))\
-                 #for k in range(num_pat) for j in range(num_times)] # 
+        # These next two lines are the implementation of the equation (21) of the paper
+        cost = [weights[k]*cp.square(log_correction[k][j])*cp.square(cp.log(H_i_j_wc[k][j]+epsilon) - cp.log(H0_t_[j]+epsilon) - b @ scaled_data[k])*(times_to_fill[j+1]-times_to_fill[j])\
+                 for k in range(num_pat) for j in range(num_times)] # 
+
+        cost_sum = cp.sum(cost)
         #cost = [weights[k]*cp.norm((log(H_i_j_wc[k][j]+epsilon) - log(Ho_t_[j]+epsilon) - b @ scaled_data[k]),'inf') \
         #                                            for k in range(num_pat) for j in range(num_times)]
-        cost = 0
-        for k in range(num_pat):
-            for j in range(num_times):
-                cost += weights[k]*cp.sum_squares(cp.log(H_i_j_wc[k][j]+epsilon) - cp.log(H0_t_[j]+epsilon) - b @ scaled_data[k])
-        print(f'time creating the cost list {timeit.default_timer() - start_time}')
+     #  cost = 0
+     #  for k in range(num_pat):
+     #      for j in range(num_times):
+     #          cost += weights[k]*cp.sum_squares(cp.log(H_i_j_wc[k][j]+epsilon) - cp.log(H0_t_[j]+epsilon) - b @ scaled_data[k])
+       #print(f'time creating the cost list {timeit.default_timer() - start_time}')
        #start_time = timeit.default_timer()
-       # cost_sum = cp.sum(cost)
 
        #print(f'time summing the cost list {timeit.default_timer() - start_time}')
-        start_time = timeit.default_timer()
+       #start_time = timeit.default_timer()
 
-        prob = cp.Problem(cp.Minimize(cost))
+        prob = cp.Problem(cp.Minimize(cost_sum))
 
 
         opt_val = prob.solve(verbose=verbose, max_iter=100000)
