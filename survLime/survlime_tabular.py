@@ -303,126 +303,6 @@ class LimeTabularExplainer(object):
         # We want to use this to solve the optimization problem
         return H_i_j_wc, weights, log_correction,  self.H0_t_, scaled_data
 
-        
-       # We have to see if this is useful for our case
-        
-        # -------------------------- Below code not used until next mark -------------------------------------
-        # for classification, the model needs to provide a list of tuples - classes
-        # along with prediction probabilities
-       #if self.mode == "classification":
-       #    if len(yss.shape) == 1:
-       #        raise NotImplementedError("LIME does not currently support "
-       #                                  "classifier models without probability "
-       #                                  "scores. If this conflicts with your "
-       #                                  "use case, please let us know: "
-       #                                  "https://github.com/datascienceinc/lime/issues/16")
-       #    elif len(yss.shape) == 2:
-       #        if self.class_names is None:
-       #            self.class_names = [str(x) for x in range(yss[0].shape[0])]
-       #        else:
-       #            self.class_names = list(self.class_names)
-       #        if not np.allclose(yss.sum(axis=1), 1.0):
-       #            warnings.warn("""
-       #            Prediction probabilties do not sum to 1, and
-       #            thus does not constitute a probability space.
-       #            Check that you classifier outputs probabilities
-       #            (Not log probabilities, or actual class predictions).
-       #            """)
-       #    else:
-       #        raise ValueError("Your model outputs "
-       #                         "arrays with {} dimensions".format(len(yss.shape)))
-       ## ------------------------- Upper code NOT USED ----------------------------------------------
-       #
-       ## for regression, the output should be a one-dimensional array of predictions
-       #else:
-       #    try:
-       #        if len(yss.shape) != 1 and len(yss[0].shape) == 1:
-       #            yss = np.array([v[0] for v in yss])
-       #        assert isinstance(yss, np.ndarray) and len(yss.shape) == 1
-       #    except AssertionError:
-       #        raise ValueError("Your model needs to output single-dimensional \
-       #            numpyarrays, not arrays of {} dimensions".format(yss.shape))
-
-       #    predicted_value = yss[0]
-       #    min_y = min(yss)
-       #    max_y = max(yss)
-
-       #    # add a dimension to be compatible with downstream machinery
-       #    yss = yss[:, np.newaxis]
-
-       #feature_names = copy.deepcopy(self.feature_names)
-       #if feature_names is None:
-       #    feature_names = [str(x) for x in range(data_row.shape[0])]
-
-       #if sp.sparse.issparse(data_row):
-       #    values = self.convert_and_round(data_row.data)
-       #    feature_indexes = data_row.indices
-       #else:
-       #    values = self.convert_and_round(data_row)
-       #    feature_indexes = None
-       #for i in self.categorical_features:
-       #    if self.discretizer is not None and i in self.discretizer.lambdas:
-       #        continue
-       #    name = int(data_row[i])
-       #    if i in self.categorical_names:
-       #        name = self.categorical_names[i][name]
-       #    feature_names[i] = '%s=%s' % (feature_names[i], name)
-       #    values[i] = 'True'
-       #categorical_features = self.categorical_features
-
-       #discretized_feature_names = None
-       #if self.discretizer is not None:
-       #    categorical_features = range(data.shape[1])
-       #    discretized_instance = self.discretizer.discretize(data_row)
-       #    discretized_feature_names = copy.deepcopy(feature_names)
-       #    for f in self.discretizer.names:
-       #        discretized_feature_names[f] = self.discretizer.names[f][int(
-       #                discretized_instance[f])]
-
-       #domain_mapper = TableDomainMapper(feature_names,
-       #                                  values,
-       #                                  scaled_data[0],
-       #                                  categorical_features=categorical_features,
-       #                                  discretized_feature_names=discretized_feature_names,
-       #                                  feature_indexes=feature_indexes)
-       #ret_exp = explanation.Explanation(domain_mapper,
-       #                                  mode=self.mode,
-       #                                  class_names=self.class_names)
-       #ret_exp.as_list
-       #if self.mode == "classification":
-       #    ret_exp.predict_proba = yss[0]
-       #    if top_labels:
-       #        labels = np.argsort(yss[0])[-top_labels:]
-       #        ret_exp.top_labels = list(labels)
-       #        ret_exp.top_labels.reverse()
-       #else:
-       #    ret_exp.predicted_value = predicted_value
-       #    ret_exp.min_value = min_y
-       #    ret_exp.max_value = max_y
-       #    labels = [0]
-       #for label in labels:
-       #    (ret_exp.intercept[label],
-       #     ret_exp.local_exp[label],
-       #     ret_exp.score, ret_exp.local_pred) = self.base.explain_instance_with_data(
-       #            scaled_data,
-       #            yss, # Predicted labels by f(x)
-       #            distances,
-       #            label, # label names
-       #            num_features,
-       #            model_regressor=model_regressor,
-       #            feature_selection=self.feature_selection)
-
-       ## TODO
-       ## see what's going on here
-       ## I see, the H0(t) is a float value
-       ## while the B vector needs to be casted to a list
-       #if self.mode == "regression":
-       #    import ipdb;ipdb.set_trace()
-       #    ret_exp.intercept[1] = ret_exp.intercept[0]
-       #    ret_exp.local_exp[1] = [x for x in ret_exp.local_exp[0]]
-       #    ret_exp.local_exp[0] = [(i, -1 * j) for i, j in ret_exp.local_exp[1]]
-       #return ret_exp
-    
     def data_inverse(self,
                        data_row,
                        num_samples):
@@ -631,18 +511,12 @@ class LimeTabularExplainer(object):
         cost = [weights[k]*cp.square(log_correction[k][j])*cp.square(cp.log(H_i_j_wc[k][j]+epsilon) - cp.log(H0_t_[j]+epsilon) - b @ scaled_data[k])*(times_to_fill[j+1]-times_to_fill[j])\
                  for k in range(num_pat) for j in range(num_times)] # 
 
-        cost_sum = cp.sum(cost)
-        #cost = [weights[k]*cp.norm((log(H_i_j_wc[k][j]+epsilon) - log(Ho_t_[j]+epsilon) - b @ scaled_data[k]),'inf') \
-        #                                            for k in range(num_pat) for j in range(num_times)]
-     #  cost = 0
-     #  for k in range(num_pat):
-     #      for j in range(num_times):
-     #          cost += weights[k]*cp.sum_squares(cp.log(H_i_j_wc[k][j]+epsilon) - cp.log(H0_t_[j]+epsilon) - b @ scaled_data[k])
-       #print(f'time creating the cost list {timeit.default_timer() - start_time}')
-       #start_time = timeit.default_timer()
+        print(f'time creating the cost list {timeit.default_timer() - start_time}')
+        start_time = timeit.default_timer()
 
-       #print(f'time summing the cost list {timeit.default_timer() - start_time}')
-       #start_time = timeit.default_timer()
+        cost_sum = cp.sum(cost)
+        print(f'time summing the cost list {timeit.default_timer() - start_time}')
+        start_time = timeit.default_timer()
 
         prob = cp.Problem(cp.Minimize(cost_sum))
 
