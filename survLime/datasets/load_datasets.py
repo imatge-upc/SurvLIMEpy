@@ -1,4 +1,4 @@
-from typing import Union
+from typing import List
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
@@ -105,9 +105,9 @@ class RandomSurvivalData:
 
     def __init__(
         self,
-        center: list[float],
+        center: List[float],
         radius: float,
-        coefficients: list[float],
+        coefficients: List[float],
         prob_event: float,
         lambda_weibull: float,
         v_weibull: float,
