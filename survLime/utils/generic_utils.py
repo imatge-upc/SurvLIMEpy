@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Union, List
 import sys
 import inspect
 import types
@@ -48,7 +48,7 @@ def fill_matrix_with_total_times(total_times : list,
 
 def compare_survival_times(bb_model : Union[CoxPHSurvivalAnalysis, Module, RandomSurvivalForest],
                            coefs : numpy.ndarray,
-                           X_train : pd.DataFrame, y_train : numpy.ndarray, X_test : pd.DataFrame):
+                           X_train : pd.DataFrame, y_train : numpy.ndarray, X_test : pd.DataFrame, true_coef : List[float] = None):
     """Trains a Cox model with the coefs obtained with cvxpy and plots the survival 
        times.
     
@@ -85,10 +85,18 @@ def compare_survival_times(bb_model : Union[CoxPHSurvivalAnalysis, Module, Rando
     rmse = sqrt(mean_squared_error(preds_bb_y, preds_surv_y))
     if isinstance(bb_model, CoxPHSurvivalAnalysis):
         plot_num=2
+        
+        if true_coef:
+            data  =  [bb_model.coef_, coefs, true_coef]
+            index =  ['CoxPH', 'SurvLIME', 'True coef']
+        else:
+            data  = [bb_model.coef_, coefs]
+            index = ['CoxPH','SurvLIME']
+        df = pd.DataFrame(columns=bb_model.feature_names_in_, 
+                  data=data, index=index)
+
         # Create axes and access them through the returned array
         fig, axs = plt.subplots(1, plot_num, figsize=(15,5))
-        df = pd.DataFrame(columns=bb_model.feature_names_in_, 
-                  data=[bb_model.coef_, coefs], index=['CoxPH','SurvLIME'])
         df.transpose().plot.bar(ax=axs[0])
         axs[0].set_title('Coefficient values for bb model and survlime')
         axs[1].step(preds_bb[0].x, preds_bb_y, where="post", label='BB model')
