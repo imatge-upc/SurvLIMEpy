@@ -24,6 +24,7 @@ class RandomSurvivalData:
         prob_event: float,
         lambda_weibull: float,
         v_weibull: float,
+        random_seed: int = None,
     ) -> None:
         """Init.
 
@@ -43,6 +44,10 @@ class RandomSurvivalData:
             raise ValueError(
                 'length of center and length of coefficients must be equal.'
             )
+        if prob_event <= 0:
+            raise ValueError('prob_event must be greater than 0.')
+        if prob_event >= 1:
+            raise ValueError('prob_event must be less than 0.')
         if lambda_weibull <= 0:
             raise ValueError('lambda_weibull must be greater than 0.')
         if v_weibull <= 0:
@@ -53,6 +58,7 @@ class RandomSurvivalData:
         self.prob_event = prob_event
         self.lambda_weibull = lambda_weibull
         self.v_weibull = v_weibull
+        self.random_state = np.random.default_rng(random_seed)
 
     def spherical_data(self, num_points: int) -> np.ndarray:
         """Generates random data in the p-dimensional sphere (covariates).
@@ -71,13 +77,15 @@ class RandomSurvivalData:
         zero_list = [0 for _ in range(n_dim)]
 
         # Uniform data in range [0, 1]
-        u = np.random.uniform(low=0.0, high=1.0, size=(num_points, 1))
+        u = self.random_state.uniform(low=0.0, high=1.0, size=(num_points, 1))
         uniform_rad_root = u ** (1 / n_dim)
         uniform_rad = radius * uniform_rad_root
 
         # Multivariate normal distribution
         I = np.identity(n_dim)
-        X = np.random.multivariate_normal(mean=zero_list, cov=I, size=num_points)
+        X = self.random_state.multivariate_normal(
+            mean=zero_list, cov=I, size=num_points
+        )
 
         # Standarisation
         X_sqr = np.sum(np.square(X), axis=1, keepdims=True)
@@ -99,7 +107,7 @@ class RandomSurvivalData:
             np.array: a column vector containing the survival times.
 
         """
-        u = np.random.uniform(size=(num_points, 1))
+        u = self.random_state.uniform(size=(num_points, 1))
         lamba_val = self.lambda_weibull
         v = self.v_weibull
         b = np.reshape(self.coefficients, newshape=(len(self.coefficients), 1))
@@ -121,7 +129,9 @@ class RandomSurvivalData:
 
         """
         prob_event = self.prob_event
-        return np.where(np.random.uniform(size=num_points) <= prob_event, True, False)
+        return np.where(
+            self.random_state.uniform(size=num_points) <= prob_event, True, False
+        )
 
     def random_survival_data(self, num_points: int) -> tuple:
         """Generates random survival data.
