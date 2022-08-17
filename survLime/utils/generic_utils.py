@@ -72,27 +72,28 @@ def compare_survival_times(bb_model : Union[CoxPHSurvivalAnalysis, Module, Rando
     # Obtain the predictions from both models
     preds_bb      = bb_model.predict_survival_function(X_test)
     preds_survlime = model_interpretable.predict_survival_function(X_test)
-    #import ipdb;ipdb.set_trace()
-    preds_bb_y  = numpy.mean([x.y for x in preds_bb], axis=0)
+
    
     # We need to do this to have the same size as the cox output
     if isinstance(bb_model, RandomSurvivalForest):
         preds_bb_y  = numpy.mean([fill_matrix_with_total_times(times_to_fill, x.y, list(x.x)) for x in preds_bb], axis=0)
-        import ipdb;ipdb.set_trace()
+    else:
+        preds_bb_y  = numpy.mean([x.y for x in preds_bb], axis=0)
 
     preds_surv_y = numpy.mean([x.y for x in preds_survlime], axis=0)
-    # 
+
     rmse = sqrt(mean_squared_error(preds_bb_y, preds_surv_y))
     if isinstance(bb_model, CoxPHSurvivalAnalysis):
         plot_num=2
         # Create axes and access them through the returned array
         fig, axs = plt.subplots(1, plot_num, figsize=(15,5))
         df = pd.DataFrame(columns=bb_model.feature_names_in_, 
-                  data=[bb_model.coef_, coefs], index=['SurvLIME','CoxPH'])
+                  data=[bb_model.coef_, coefs], index=['CoxPH','SurvLIME'])
         df.transpose().plot.bar(ax=axs[0])
         axs[0].set_title('Coefficient values for bb model and survlime')
         axs[1].step(preds_bb[0].x, preds_bb_y, where="post", label='BB model')
         axs[1].step(preds_survlime[0].x, preds_surv_y, where="post", label='SurvLIME')
+        axs[1].legend()
         axs[1].set_title(f'Mean survival time comparison RMSE: {rmse:.3}')
     # If we are using other model, we don't have coefficients to compare with
     else:

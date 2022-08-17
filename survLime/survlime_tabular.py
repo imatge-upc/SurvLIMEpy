@@ -242,7 +242,7 @@ class LimeTabularExplainer(object):
         """Generates explanations for a prediction.
 
         First, we generate neighborhood data by randomly perturbing features
-        from the instance (see __data_inverse). We then learn locally weighted
+        from the instance (see _data_inverse). We then learn locally weighted
         linear models on this neighborhood data to explain each of the classes
         in an interpretable way (see lime_base.py).
 
@@ -274,7 +274,7 @@ class LimeTabularExplainer(object):
         if sp.sparse.issparse(data_row) and not sp.sparse.isspmatrix_csr(data_row):
             # Preventative code: if sparse, convert to csr format if not in csr format already
             data_row = data_row.tocsr()
-        data, inverse = self.__data_inverse(data_row, num_samples)
+        data, inverse = self._data_inverse(data_row, num_samples)
         if sp.sparse.issparse(data):
             # Note in sparse case we don't subtract mean since data would become dense
             scaled_data = data.multiply(self.scaler.scale_)
@@ -286,7 +286,7 @@ class LimeTabularExplainer(object):
         distances = sklearn.metrics.pairwise_distances(
                 scaled_data,
                 scaled_data[0].reshape(1, -1),
-                metric=distance_metric
+                metric=distance_metric #TODO 
         ).ravel()
         
         
@@ -303,217 +303,8 @@ class LimeTabularExplainer(object):
         # We want to use this to solve the optimization problem
         return H_i_j_wc, weights, log_correction,  self.H0_t_, scaled_data
 
-        
-       # We have to see if this is useful for our case
-        
-        # -------------------------- Below code not used until next mark -------------------------------------
-        # for classification, the model needs to provide a list of tuples - classes
-        # along with prediction probabilities
-       #if self.mode == "classification":
-       #    if len(yss.shape) == 1:
-       #        raise NotImplementedError("LIME does not currently support "
-       #                                  "classifier models without probability "
-       #                                  "scores. If this conflicts with your "
-       #                                  "use case, please let us know: "
-       #                                  "https://github.com/datascienceinc/lime/issues/16")
-       #    elif len(yss.shape) == 2:
-       #        if self.class_names is None:
-       #            self.class_names = [str(x) for x in range(yss[0].shape[0])]
-       #        else:
-       #            self.class_names = list(self.class_names)
-       #        if not np.allclose(yss.sum(axis=1), 1.0):
-       #            warnings.warn("""
-       #            Prediction probabilties do not sum to 1, and
-       #            thus does not constitute a probability space.
-       #            Check that you classifier outputs probabilities
-       #            (Not log probabilities, or actual class predictions).
-       #            """)
-       #    else:
-       #        raise ValueError("Your model outputs "
-       #                         "arrays with {} dimensions".format(len(yss.shape)))
-       ## ------------------------- Upper code NOT USED ----------------------------------------------
-       #
-       ## for regression, the output should be a one-dimensional array of predictions
-       #else:
-       #    try:
-       #        if len(yss.shape) != 1 and len(yss[0].shape) == 1:
-       #            yss = np.array([v[0] for v in yss])
-       #        assert isinstance(yss, np.ndarray) and len(yss.shape) == 1
-       #    except AssertionError:
-       #        raise ValueError("Your model needs to output single-dimensional \
-       #            numpyarrays, not arrays of {} dimensions".format(yss.shape))
-
-       #    predicted_value = yss[0]
-       #    min_y = min(yss)
-       #    max_y = max(yss)
-
-       #    # add a dimension to be compatible with downstream machinery
-       #    yss = yss[:, np.newaxis]
-
-       #feature_names = copy.deepcopy(self.feature_names)
-       #if feature_names is None:
-       #    feature_names = [str(x) for x in range(data_row.shape[0])]
-
-       #if sp.sparse.issparse(data_row):
-       #    values = self.convert_and_round(data_row.data)
-       #    feature_indexes = data_row.indices
-       #else:
-       #    values = self.convert_and_round(data_row)
-       #    feature_indexes = None
-       #for i in self.categorical_features:
-       #    if self.discretizer is not None and i in self.discretizer.lambdas:
-       #        continue
-       #    name = int(data_row[i])
-       #    if i in self.categorical_names:
-       #        name = self.categorical_names[i][name]
-       #    feature_names[i] = '%s=%s' % (feature_names[i], name)
-       #    values[i] = 'True'
-       #categorical_features = self.categorical_features
-
-       #discretized_feature_names = None
-       #if self.discretizer is not None:
-       #    categorical_features = range(data.shape[1])
-       #    discretized_instance = self.discretizer.discretize(data_row)
-       #    discretized_feature_names = copy.deepcopy(feature_names)
-       #    for f in self.discretizer.names:
-       #        discretized_feature_names[f] = self.discretizer.names[f][int(
-       #                discretized_instance[f])]
-
-       #domain_mapper = TableDomainMapper(feature_names,
-       #                                  values,
-       #                                  scaled_data[0],
-       #                                  categorical_features=categorical_features,
-       #                                  discretized_feature_names=discretized_feature_names,
-       #                                  feature_indexes=feature_indexes)
-       #ret_exp = explanation.Explanation(domain_mapper,
-       #                                  mode=self.mode,
-       #                                  class_names=self.class_names)
-       #ret_exp.as_list
-       #if self.mode == "classification":
-       #    ret_exp.predict_proba = yss[0]
-       #    if top_labels:
-       #        labels = np.argsort(yss[0])[-top_labels:]
-       #        ret_exp.top_labels = list(labels)
-       #        ret_exp.top_labels.reverse()
-       #else:
-       #    ret_exp.predicted_value = predicted_value
-       #    ret_exp.min_value = min_y
-       #    ret_exp.max_value = max_y
-       #    labels = [0]
-       #for label in labels:
-       #    (ret_exp.intercept[label],
-       #     ret_exp.local_exp[label],
-       #     ret_exp.score, ret_exp.local_pred) = self.base.explain_instance_with_data(
-       #            scaled_data,
-       #            yss, # Predicted labels by f(x)
-       #            distances,
-       #            label, # label names
-       #            num_features,
-       #            model_regressor=model_regressor,
-       #            feature_selection=self.feature_selection)
-
-       ## TODO
-       ## see what's going on here
-       ## I see, the H0(t) is a float value
-       ## while the B vector needs to be casted to a list
-       #if self.mode == "regression":
-       #    import ipdb;ipdb.set_trace()
-       #    ret_exp.intercept[1] = ret_exp.intercept[0]
-       #    ret_exp.local_exp[1] = [x for x in ret_exp.local_exp[0]]
-       #    ret_exp.local_exp[0] = [(i, -1 * j) for i, j in ret_exp.local_exp[1]]
-       #return ret_exp
     
-    def data_inverse(self,
-                       data_row,
-                       num_samples):
-        """Generates a neighborhood around a prediction.
-
-        For numerical features, perturb them by sampling from a Normal(0,1) and
-        doing the inverse operation of mean-centering and scaling, according to
-        the means and stds in the training data. For categorical features,
-        perturb by sampling according to the training distribution, and making
-        a binary feature that is 1 when the value is the same as the instance
-        being explained.
-
-        Args:
-            data_row: 1d numpy array, corresponding to a row
-            num_samples: size of the neighborhood to learn the linear model
-
-        Returns:
-            A tuple (data, inverse), where:
-                data: dense num_samples * K matrix, where categorical features
-                are encoded with either 0 (not equal to the corresponding value
-                in data_row) or 1. The first row is the original instance.
-                inverse: same as data, except the categorical features are not
-                binary, but categorical (as the original data)
-        """
-        is_sparse = sp.sparse.issparse(data_row)
-        if is_sparse:
-            num_cols = data_row.shape[1]
-            data = sp.sparse.csr_matrix((num_samples, num_cols), dtype=data_row.dtype)
-        else:
-            num_cols = data_row.shape[0]
-            data = np.zeros((num_samples, num_cols))
-        categorical_features = range(num_cols)
-        if self.discretizer is None:
-            instance_sample = data_row
-            scale = self.scaler.scale_
-            mean = self.scaler.mean_
-            if is_sparse:
-                # Perturb only the non-zero values
-                non_zero_indexes = data_row.nonzero()[1]
-                num_cols = len(non_zero_indexes)
-                instance_sample = data_row[:, non_zero_indexes]
-                scale = scale[non_zero_indexes]
-                mean = mean[non_zero_indexes]
-
-            ## TODO - Show Cristian!
-            # Here is where we instantiate the synthetic data
-            # Possible point for an upgrade
-            data = self.random_state.normal(
-                0, 1, num_samples * num_cols).reshape(
-                num_samples, num_cols)
-            if self.sample_around_instance:
-                data = data * scale + instance_sample
-            else:
-                data = data * scale + mean
-            if is_sparse:
-                if num_cols == 0:
-                    data = sp.sparse.csr_matrix((num_samples,
-                                                 data_row.shape[1]),
-                                                dtype=data_row.dtype)
-                else:
-                    indexes = np.tile(non_zero_indexes, num_samples)
-                    indptr = np.array(
-                        range(0, len(non_zero_indexes) * (num_samples + 1),
-                              len(non_zero_indexes)))
-                    data_1d_shape = data.shape[0] * data.shape[1]
-                    data_1d = data.reshape(data_1d_shape)
-                    data = sp.sparse.csr_matrix(
-                        (data_1d, indexes, indptr),
-                        shape=(num_samples, data_row.shape[1]))
-            categorical_features = self.categorical_features
-            first_row = data_row
-        else:
-            first_row = self.discretizer.discretize(data_row)
-        data[0] = data_row.copy()
-        inverse = data.copy()
-        for column in categorical_features:
-            values = self.feature_values[column]
-            freqs = self.feature_frequencies[column]
-            inverse_column = self.random_state.choice(values, size=num_samples,
-                                                      replace=True, p=freqs)
-            binary_column = (inverse_column == first_row[column]).astype(int)
-            binary_column[0] = 1
-            inverse_column[0] = data[0, column]
-            data[:, column] = binary_column
-            inverse[:, column] = inverse_column
-        if self.discretizer is not None:
-            inverse[1:] = self.discretizer.undiscretize(inverse[1:])
-        inverse[0] = data_row
-        return data, inverse
-    
-    def __data_inverse(self,
+    def _data_inverse(self,
                        data_row,
                        num_samples):
         """Generates a neighborhood around a prediction.
@@ -604,31 +395,40 @@ class LimeTabularExplainer(object):
         return data, inverse
 
     def solve_opt_problem(self, H_i_j_wc : list, weights :np.ndarray, log_correction: list,
-                          H0_t_ : np.ndarray, scaled_data : np.ndarray, verbose : bool=False) -> np.ndarray:
+                          H0_t_ : np.ndarray, scaled_data : np.ndarray, verbose : bool=True) -> np.ndarray:
+        """ Solves the convex problem proposed in: https://arxiv.org/pdf/2003.08371.pdfF
+
+        Args:
+            H_i_j_wc: list: Hazard computed by the bb model
+            weights: np.ndarray :with the weights for every synthetic data point
+            log_correction: list: correction for using log of the hazards for every computed hazard
+            H0_t_: np.ndarray: baseline hazard of the training set
+            scaled_data: np.ndarray : synthetic data points
+            verbose: bool: whether to output cvxpy solver info
+
+        Returns:
+            b.values : np.ndarray : solution to the convex problem
+        """
         start_time = timeit.default_timer()
 
         epsilon = 0.00000001
         num_features = len(self.scaler.mean_) # Is there a nicer way to obtain this rather than using the scaler?
         num_times = len(set(self.train_times))-1
         num_pat = len(weights) # Is there a nicer way to obtain this rather than usng the length of the weights
-        #cp.square(log_correction[k][j])
-        #*(times_to_fill[j+1]-times_to_fill[j])
-        # We are having Conconcave problems here!!
+        times_to_fill = list(set(self.train_times)); times_to_fill.sort()
+
         b = cp.Variable(num_features)
-        cost = [weights[k]*cp.sum_squares((log(H_i_j_wc[k][j]+epsilon) - log(H0_t_[j]+epsilon) - b @ scaled_data[k]))\
-                 for k in range(num_pat) for j in range(num_times)] 
-        #cost = [weights[k]*cp.sum_squares(cp.square(log_correction[k][j])(log(H_i_j_wc[k][j]+epsilon) - log(H0_t_[j]+epsilon) - b @ scaled_data[k]))\
-                 #for k in range(num_pat) for j in range(num_times)] # 
-        #cost = [weights[k]*cp.norm((log(H_i_j_wc[k][j]+epsilon) - log(Ho_t_[j]+epsilon) - b @ scaled_data[k]),'inf') \
-        #                                            for k in range(num_pat) for j in range(num_times)]
+
+        # These next two lines are the implementation of the equation (21) of the paper
+        cost = [weights[k]*cp.square(log_correction[k][j])*cp.square(cp.log(H_i_j_wc[k][j]+epsilon) - cp.log(H0_t_[j]+epsilon) - b @ scaled_data[k])*(times_to_fill[j+1]-times_to_fill[j])\
+                 for k in range(num_pat) for j in range(num_times)] # 
+        
         print(f'time creating the cost list {timeit.default_timer() - start_time}')
-
         start_time = timeit.default_timer()
-        cost_sum = cp.sum(cost)
 
+        cost_sum = cp.sum(cost)
         print(f'time summing the cost list {timeit.default_timer() - start_time}')
         start_time = timeit.default_timer()
-
         prob = cp.Problem(cp.Minimize(cost_sum))
 
 
