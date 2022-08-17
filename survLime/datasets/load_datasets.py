@@ -39,6 +39,10 @@ class Loader():
                                         'pat.karno', 'meal.cal', 'wt.loss']
             self.categorical_columns = ['ph.ecog']
             self.df = pd.read_csv(lung_path)
+
+        elif dataset_name=='synthetic':
+            ## TODO
+            pass
         else:
             raise AssertionError(f'The give name {dataset_name} was not found in [veterans, udca, pbc, lung]')
 
@@ -51,7 +55,7 @@ class Loader():
         y : np.ndarray of tuples with (status, time)
         """
         self.df['status'] = [True if x==1 else False for x in self.df['status']]
-        self.df['y'] = [(x,y) for x,y in zip(self.df['status'], self.df['time'])]
+        self.df['y'] = [(x,y) for x,y in zip(self.df['status'], self.df['time'])] # Needed for sksurv
         y = self.df.pop('y').to_numpy()
         events = [x[0] for x in y]
         times  = [x[1] for x in y]
@@ -62,7 +66,8 @@ class Loader():
         return x, events, times 
    
     def preprocess_datasets(self, x : pd.DataFrame,
-                            events : list, times : list) -> list([pd.DataFrame, np.ndarray]):
+                            events : list, times : list,
+                                random_seed : int =1) -> list([pd.DataFrame, np.ndarray]):
         """
         Preprocesses the data to be used as model input.
 
@@ -80,10 +85,8 @@ class Loader():
         # Then convert the data and the features to three splits
         # and standarize them
         y = Surv.from_arrays(events, times)
-        X_train, X_test, y_train, y_test = train_test_split(x_pre.copy(), y, test_size=0.40, random_state=1)
-        X_val, X_test, y_val, y_test = train_test_split(X_test.copy(), y_test, test_size=0.5, random_state=1)
-
-
+        X_train, X_test, y_train, y_test = train_test_split(x_pre.copy(), y, test_size=0.30, random_state=random_seed)
+        X_val, X_test, y_val, y_test = train_test_split(X_test.copy(), y_test, test_size=0.5, random_state=random_seed)
 
         scaler = StandardScaler()
         X_train_processed = pd.DataFrame(data=scaler.fit_transform(X_train, y_train),

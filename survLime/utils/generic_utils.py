@@ -72,16 +72,16 @@ def compare_survival_times(bb_model : Union[CoxPHSurvivalAnalysis, Module, Rando
     # Obtain the predictions from both models
     preds_bb      = bb_model.predict_survival_function(X_test)
     preds_survlime = model_interpretable.predict_survival_function(X_test)
-    #import ipdb;ipdb.set_trace()
-    preds_bb_y  = numpy.mean([x.y for x in preds_bb], axis=0)
+
    
     # We need to do this to have the same size as the cox output
     if isinstance(bb_model, RandomSurvivalForest):
         preds_bb_y  = numpy.mean([fill_matrix_with_total_times(times_to_fill, x.y, list(x.x)) for x in preds_bb], axis=0)
-        import ipdb;ipdb.set_trace()
+    else:
+        preds_bb_y  = numpy.mean([x.y for x in preds_bb], axis=0)
 
     preds_surv_y = numpy.mean([x.y for x in preds_survlime], axis=0)
-    # 
+
     rmse = sqrt(mean_squared_error(preds_bb_y, preds_surv_y))
     if isinstance(bb_model, CoxPHSurvivalAnalysis):
         plot_num=2
