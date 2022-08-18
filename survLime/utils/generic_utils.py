@@ -110,6 +110,25 @@ def compare_survival_times(bb_model : Union[CoxPHSurvivalAnalysis, Module, Rando
         plt.legend()
         plt.title(f'Mean survival time comparison RMSE: {rmse:.3}')
 
+
+def compute_kolmogorov_test(first_sample : np.ndarray, second_sample : np.ndarray):
+    """
+    Computes the Kolmogorov Smirnoff tests given two samples
+
+    Args:
+    first_sample  : np.ndarray : Cumulative hazard as computed by one model
+    second_sample : np.ndarray : Cumulative hazard as computed by a second model
+    """
+    norm = np.linalg.norm(first_sample)
+    first_sample = first_sample/norm
+
+    norm = np.linalg.norm(second_sample)
+    second_sample = second_sample/norm
+
+    test_result = sp.stats.ks_2samp(first_sample, second_sample)
+
+    return test_result
+
 def has_arg(fn, arg_name):
     """Checks if a callable accepts a given keyword argument.
 
