@@ -52,7 +52,6 @@ def experiment(train : List, test : List, model_type : str='cox', exp_name : str
 
     explainer = survlime_tabular.LimeTabularExplainer(x_train, target_data=y_train, feature_names=columns, class_names=None,
                                                    categorical_features=None, verbose=True, discretize_continuous=False)
-    import ipdb;ipdb.set_trace()
     if exp_name=='1.3':
        x_test = test[0] 
    #computation_exp = compute_weights(explainer, x_test, model)

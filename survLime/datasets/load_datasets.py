@@ -66,6 +66,7 @@ class Loader():
    
     def preprocess_datasets(self, x : pd.DataFrame,
                             events : list, times : list,
+                            standarize : bool=True,
                                 random_seed : int =1) -> list([pd.DataFrame, np.ndarray]):
         """
         Preprocesses the data to be used as model input.
@@ -86,18 +87,19 @@ class Loader():
         y = Surv.from_arrays(events, times)
         X_train, X_test, y_train, y_test = train_test_split(x_pre.copy(), y, test_size=0.30, random_state=random_seed)
         X_val, X_test, y_val, y_test = train_test_split(X_test.copy(), y_test, test_size=0.5, random_state=random_seed)
+    
+        if standarize:
+            scaler = StandardScaler()
+            X_train = pd.DataFrame(data=scaler.fit_transform(X_train, y_train),
+                                             columns=X_train.columns, index=X_train.index)
 
-        scaler = StandardScaler()
-        X_train_processed = pd.DataFrame(data=scaler.fit_transform(X_train, y_train),
-                                         columns=X_train.columns, index=X_train.index)
+            X_val   = pd.DataFrame(data=scaler.transform(X_val),
+                                             columns=X_val.columns, index=X_val.index)
 
-        X_val_processed   = pd.DataFrame(data=scaler.transform(X_val),
-                                         columns=X_val.columns, index=X_val.index)
+            X_test  = pd.DataFrame(data=scaler.transform(X_test),
+                                             columns=X_test.columns, index=X_test.index)
 
-        X_test_processed  = pd.DataFrame(data=scaler.transform(X_test),
-                                         columns=X_test.columns, index=X_test.index)
-
-        return [X_train_processed, y_train], [X_val_processed, y_val], [X_test_processed, y_test]
+        return [X_train, y_train], [X_val, y_val], [X_test, y_test]
 
 
 class RandomSurvivalData:
