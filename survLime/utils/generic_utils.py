@@ -3,9 +3,7 @@ import sys
 import inspect
 import types
 import scipy as sp
-import json
 
-import numpy
 import numpy as np
 import pandas as pd
 from math import sqrt
@@ -19,8 +17,8 @@ from sksurv.linear_model import CoxPHSurvivalAnalysis
 from survLime import explanation
 
 def fill_matrix_with_total_times(total_times : list,
-                                 predicted_surv : numpy.ndarray,
-                                 event_times : numpy.ndarray):
+                                 predicted_surv : np.ndarray,
+                                 event_times : np.ndarray):
     """The model only outputs a prediction for the event times
        this function fills the gaps between them
 
@@ -47,9 +45,47 @@ def fill_matrix_with_total_times(total_times : list,
     del gl[0]
     return gl
 
+def compare_cum_hazard_curves(bb_model : Union[CoxPHSurvivalAnalysis, Module, RandomSurvivalForest],
+                           coefs : np.ndarray,
+                           X_train : pd.DataFrame, y_train : np.ndarray, X_test : pd.DataFrame):
+    """
+    Computes a Kolmogorov-Smirnov test for two given models and a test set.
+
+    Args:
+    bb_model: model that we want to find the model_interpretable to
+    coefs: values obtained during the convex optimization problem to be used as Cox coefficients
+    X_train: DataFrame with the training data
+    y_train: np.ndarray witht the training labels
+    X_test:  DataFrame with the test data
+    
+    Returns:
+    test: KS statistic and pvalue
+
+    """
+    times_train = [x[1] for x in y_train]
+    times_to_fill = list(set(times_train)); times_to_fill.sort()
+    
+    model_interpretable = CoxPHSurvivalAnalysis()
+    model_interpretable.fit(X_train, y_train)
+    model_interpretable.coef_ = coefs
+    # Obtain the predictions from both models
+    preds_bb      = bb_model.predict_cumulative_hazard_function(X_test)
+    preds_survlime = model_interpretable.predict_cumulative_hazard_function(X_test)
+   # We need to do this to have the same size as the cox output
+    if isinstance(bb_model, RandomSurvivalForest):
+        preds_bb_y  = np.mean([fill_matrix_with_total_times(times_to_fill, x.y, list(x.x)) for x in preds_bb], axis=0)
+    else:
+        preds_bb_y  = np.mean([x.y for x in preds_bb], axis=0)
+
+    preds_surv_y = np.mean([x.y for x in preds_survlime], axis=0)
+    
+    test = compute_kolmogorov_test(preds_bb_y, preds_surv_y)
+
+    return test
+
 def compare_survival_times(bb_model : Union[CoxPHSurvivalAnalysis, Module, RandomSurvivalForest],
-                           coefs : numpy.ndarray,
-                           X_train : pd.DataFrame, y_train : numpy.ndarray, X_test : pd.DataFrame, true_coef : List[float] = None):
+                           coefs : np.ndarray,
+                           X_train : pd.DataFrame, y_train : np.ndarray, X_test : pd.DataFrame, true_coef : List[float] = None):
     """Trains a Cox model with the coefs obtained with cvxpy and plots the survival 
        times.
     
@@ -57,8 +93,9 @@ def compare_survival_times(bb_model : Union[CoxPHSurvivalAnalysis, Module, Rando
         bb_model: model that we want to find the model_interpretable to
         coefs: values obtained during the convex optimization problem to be used as Cox coefficients
         X_train: DataFrame with the training data
-        y_train: numpy.ndarray witht the training labels
+        y_train: np.ndarray witht the training labels
         X_test:  DataFrame with the test data
+        true_coef: true coeficcients used for the simulated data 
 
     Returns:
         Plots
@@ -66,10 +103,9 @@ def compare_survival_times(bb_model : Union[CoxPHSurvivalAnalysis, Module, Rando
     times_train = [x[1] for x in y_train]
     times_to_fill = list(set(times_train)); times_to_fill.sort()
     
-    model_interpretable = CoxPHSurvivalAnalysis(alpha=0.00001)
+    model_interpretable = CoxPHSurvivalAnalysis()
     model_interpretable.fit(X_train, y_train)
     model_interpretable.coef_ = coefs
-    
     # Obtain the predictions from both models
     preds_bb      = bb_model.predict_survival_function(X_test)
     preds_survlime = model_interpretable.predict_survival_function(X_test)
@@ -77,11 +113,11 @@ def compare_survival_times(bb_model : Union[CoxPHSurvivalAnalysis, Module, Rando
    
     # We need to do this to have the same size as the cox output
     if isinstance(bb_model, RandomSurvivalForest):
-        preds_bb_y  = numpy.mean([fill_matrix_with_total_times(times_to_fill, x.y, list(x.x)) for x in preds_bb], axis=0)
+        preds_bb_y  = np.mean([fill_matrix_with_total_times(times_to_fill, x.y, list(x.x)) for x in preds_bb], axis=0)
     else:
-        preds_bb_y  = numpy.mean([x.y for x in preds_bb], axis=0)
+        preds_bb_y  = np.mean([x.y for x in preds_bb], axis=0)
 
-    preds_surv_y = numpy.mean([x.y for x in preds_survlime], axis=0)
+    preds_surv_y = np.mean([x.y for x in preds_survlime], axis=0)
 
     rmse = sqrt(mean_squared_error(preds_bb_y, preds_surv_y))
     if isinstance(bb_model, CoxPHSurvivalAnalysis):
