@@ -1,4 +1,4 @@
-![image]([https://github.com/CarlosHernandezP/SurvLIME/blob/master/logo.png](https://github.com/CarlosHernandezP/SurvLIME/blob/master/logo.png?raw=true))
+![image](https://github.com/CarlosHernandezP/SurvLIME/blob/master/logo.png)
 # SurvLIME
 Soon to be survival implementation of the LIME algorithm.
 
