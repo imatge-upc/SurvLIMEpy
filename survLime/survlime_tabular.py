@@ -46,7 +46,7 @@ class LimeTabularExplainer(object):
     def __init__(self,
                  training_data,
                  target_data,
-                 mode="classification",
+                 H0,
                  training_labels=None,
                  feature_names=None,
                  categorical_features=None,
@@ -54,7 +54,6 @@ class LimeTabularExplainer(object):
                  kernel_width=None,
                  kernel=None,
                  verbose=False,
-                 class_names=None,
                  feature_selection='auto',
                  discretize_continuous=True,
                  discretizer='quartile',
@@ -110,17 +109,15 @@ class LimeTabularExplainer(object):
         """
         
         self.random_state = check_random_state(random_state)
-        self.mode = mode
         self.categorical_names = categorical_names or {}
         self.sample_around_instance = sample_around_instance
         self.training_data_stats = training_data_stats
-        
+
         # SurvLIME changes
+        self.H0 = H0
         self.train_events = [y[0] for y in target_data]
         self.train_times = [y[1] for y in target_data]
 
-        self.H0_t_ = nelson_aalen_estimator(self.train_events, self.train_times)[0]
-        
         # Check and raise proper error in stats are supplied in non-descritized path
         if self.training_data_stats:
             self.validate_training_data_stats(self.training_data_stats)
@@ -183,7 +180,6 @@ class LimeTabularExplainer(object):
         
         self.feature_selection = feature_selection
         self.base = lime_base.LimeBase(self.kernel_fn, verbose, random_state=self.random_state)
-        self.class_names = class_names
 
         # Though set has no role to play if training data stats are provided
         # TODO - Show Cris!
@@ -233,12 +229,10 @@ class LimeTabularExplainer(object):
     def explain_instance(self,
                          data_row,
                          predict_fn,
-                         labels=(1,),
-                         top_labels=None,
-                         num_features=10,
                          num_samples=5000,
                          distance_metric='euclidean',
-                         model_regressor=None):
+                         verbose=False
+                        ):
         """Generates explanations for a prediction.
 
         First, we generate neighborhood data by randomly perturbing features
@@ -256,16 +250,8 @@ class LimeTabularExplainer(object):
                 is `regressor.predict()`. The prediction function needs to work
                 on multiple feature vectors (the vectors randomly perturbed
                 from the data_row).
-            labels: iterable with labels to be explained.
-            top_labels: if not None, ignore labels and produce explanations for
-                the K labels with highest prediction probabilities, where K is
-                this parameter.
-            num_features: maximum number of features present in explanation
             num_samples: size of the neighborhood to learn the linear model
             distance_metric: the distance metric to use for weights.
-            model_regressor: sklearn regressor to use in explanation. Defaults
-                to Ridge regression in LimeBase. Must have model_regressor.coef_
-                and 'sample_weight' as a parameter to model_regressor.fit()
 
         Returns:
             An Explanation object (see explanation.py) with the corresponding
@@ -288,22 +274,91 @@ class LimeTabularExplainer(object):
                 scaled_data[0].reshape(1, -1),
                 metric=distance_metric #TODO 
         ).ravel()
-        
-        
+
+        weights = self.kernel_fn(distances)
+
+        # Solution for the optimisation problems
+        return self.solve_opt_problem(
+            predict_fn=predict_fn, distances=distances, weights=weights, H0=self.H0,
+            scaled_data=scaled_data, verbose=verbose
+        )
+
+    def solve_opt_problem(self, predict_fn, distances,
+                        weights, H0, scaled_data, verbose):
+        """ Solves the convex problem proposed in: https://arxiv.org/pdf/2003.08371.pdfF
+
+        Args:
+            H_i_j_wc: list: Hazard computed by the bb model
+            weights: np.ndarray :with the weights for every synthetic data point
+            log_correction: list: correction for using log of the hazards for every computed hazard
+            H0_t_: np.ndarray: baseline hazard of the training set
+            scaled_data: np.ndarray : synthetic data points
+            verbose: bool: whether to output cvxpy solver info
+
+        Returns:
+            b.values : np.ndarray : solution to the convex problem
+        """
+        epsilon = 0.00000001
+        num_features = len(self.scaler.mean_) # Is there a nicer way to obtain this rather than using the scaler?
+        m = len(set(self.train_times))
+        num_neighbours = len(weights) # Is there a nicer way to obtain this rather than usng the length of the weights
+
         # SurvLIME changes
-        yss = predict_fn(inverse)
+        H_i_j_wc = predict_fn(scaled_data)
+        # To do: validate de format of this list
+        print(H_i_j_wc.shape)
         
         times_to_fill = list(set(self.train_times))
         times_to_fill.sort()
-        H_i_j_wc = [fill_matrix_with_total_times(times_to_fill, x.y, list(x.x)) for x in yss]
-        log_correction = [np.divide(np.array(x), np.log(np.array(x)+0.0001)) for x in H_i_j_wc]
-        
-        weights = self.kernel_fn(distances)
-        
-        # We want to use this to solve the optimization problem
-        return H_i_j_wc, weights, log_correction,  self.H0_t_, scaled_data
+        log_correction = np.divide(H_i_j_wc, np.log(H_i_j_wc + epsilon))
 
-    
+        # Varible to look for
+        b = cp.Variable((num_features, 1))
+
+        # Reshape and log of predictions
+        H = np.reshape(np.array(H_i_j_wc), newshape=(num_neighbours, m))
+        LnH = np.log(H)
+
+        # Lo of baseline cumulative hazard
+        LnH0 = np.log(H0)
+
+        # Compute the log correction
+        logs = np.reshape(log_correction, newshape=(num_neighbours, m))
+
+        # Distance weights
+        w = np.reshape(weights, newshape=(num_neighbours,1))
+
+        # Time differences
+        t = self.train_times.copy()
+        t.append(t[-1]+epsilon)
+        t.sort()
+        delta_t = [t[i+1] - t[i] for i in range(m)]
+        delta_t = np.reshape(np.array(delta_t), newshape=(m, 1))
+
+        # Matrices to produce the proper sizes
+        ones_N = np.ones(shape=(num_neighbours, 1))
+        ones_m_1 = np.ones(shape=(m, 1))
+
+        B = np.dot(ones_N, LnH0.T)
+        C = LnH-B
+
+        Z = scaled_data@b
+        D = Z@ones_m_1.T
+
+        E = C - D
+        E_sq = cp.square(E)
+
+        V_sq = cp.square(logs)
+
+        F = cp.multiply(E_sq, V_sq)
+        G = F@delta_t
+
+        funct = G.T@w
+        objective = cp.Minimize(funct)
+        prob = cp.Problem(objective)
+        result = prob.solve(verbose=verbose)
+        return H_i_j_wc, weights, log_correction, scaled_data, b.value, result
+
     def _data_inverse(self,
                        data_row,
                        num_samples):
@@ -393,46 +448,3 @@ class LimeTabularExplainer(object):
             inverse[1:] = self.discretizer.undiscretize(inverse[1:])
         inverse[0] = data_row
         return data, inverse
-
-    def solve_opt_problem(self, H_i_j_wc : list, weights :np.ndarray, log_correction: list,
-                          H0_t_ : np.ndarray, scaled_data : np.ndarray, verbose : bool=True) -> np.ndarray:
-        """ Solves the convex problem proposed in: https://arxiv.org/pdf/2003.08371.pdfF
-
-        Args:
-            H_i_j_wc: list: Hazard computed by the bb model
-            weights: np.ndarray :with the weights for every synthetic data point
-            log_correction: list: correction for using log of the hazards for every computed hazard
-            H0_t_: np.ndarray: baseline hazard of the training set
-            scaled_data: np.ndarray : synthetic data points
-            verbose: bool: whether to output cvxpy solver info
-
-        Returns:
-            b.values : np.ndarray : solution to the convex problem
-        """
-        start_time = timeit.default_timer()
-
-        epsilon = 0.00000001
-        num_features = len(self.scaler.mean_) # Is there a nicer way to obtain this rather than using the scaler?
-        num_times = len(set(self.train_times))-1
-        num_pat = len(weights) # Is there a nicer way to obtain this rather than usng the length of the weights
-        times_to_fill = list(set(self.train_times)); times_to_fill.sort()
-
-        b = cp.Variable(num_features)
-
-        # These next two lines are the implementation of the equation (21) of the paper
-        cost = [weights[k]*cp.square(log_correction[k][j])*cp.square(cp.log(H_i_j_wc[k][j]+epsilon) - cp.log(H0_t_[j]+epsilon) - b @ scaled_data[k])*(times_to_fill[j+1]-times_to_fill[j])\
-                 for k in range(num_pat) for j in range(num_times)] # 
-        
-        print(f'time creating the cost list {timeit.default_timer() - start_time}')
-        start_time = timeit.default_timer()
-
-        cost_sum = cp.sum(cost)
-        print(f'time summing the cost list {timeit.default_timer() - start_time}')
-        start_time = timeit.default_timer()
-        prob = cp.Problem(cp.Minimize(cost_sum))
-
-
-        opt_val = prob.solve(verbose=verbose, max_iter=100000)
-        print(f'time solving the problem {timeit.default_timer() - start_time}')
-        b.value
-        return b.value
