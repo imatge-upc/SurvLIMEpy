@@ -1,3 +1,4 @@
+<img src="https://github.com/CarlosHernandezP/SurvLIME/blob/master/logo.png" width="256" height="256">
 # SurvLIME
 Soon to be survival implementation of the LIME algorithm.
 
