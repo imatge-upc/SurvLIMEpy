@@ -1,41 +1,19 @@
-"""
-Functions for explaining classifiers that use tabular data (matrices).
-"""
 import collections
-import copy
 from functools import partial
-import json
-import warnings
-
 import numpy as np
 import scipy as sp
+import cvxpy as cp
 import sklearn
 import sklearn.preprocessing
 from sklearn.utils import check_random_state
-
-from lime.discretize import QuartileDiscretizer
-from lime.discretize import DecileDiscretizer
-from lime.discretize import EntropyDiscretizer
-from lime.discretize import BaseDiscretizer
-from lime.discretize import StatsDiscretizer
-from . import explanation
-from . import lime_base
-
-
-# ------------- Things we are adding for survLIME -------------------------
-from survLime.utils.generic_utils import fill_matrix_with_total_times
 from sksurv.nonparametric import nelson_aalen_estimator
-from functools import partial
-
-import cvxpy as cp
-from math import log
-import timeit
+from . import lime_base
+from survLime.discretize import QuartileDiscretizer, DecileDiscretizer, EntropyDiscretizer, BaseDiscretizer, StatsDiscretizer
 
 
-
-
-class LimeTabularExplainer(object):
-    """Explains predictions on tabular (i.e. matrix) data.
+class LimeTabularExplainer:
+    """To DO: change explanation
+    Explains predictions on tabular (i.e. matrix) data.
     For numerical features, perturb them by sampling from a Normal(0,1) and
     doing the inverse operation of mean-centering and scaling, according to the
     means and stds in the training data. For categorical features, perturb by
@@ -44,28 +22,28 @@ class LimeTabularExplainer(object):
     explained."""
 
     def __init__(self,
-                 training_data,
-                 target_data,
-                 H0,
-                 training_labels=None,
-                 feature_names=None,
-                 categorical_features=None,
-                 categorical_names=None,
-                 kernel_width=None,
-                 kernel=None,
-                 verbose=False,
-                 feature_selection='auto',
-                 discretize_continuous=True,
-                 discretizer='quartile',
-                 sample_around_instance=False,
-                 random_state=None,
-                 training_data_stats=None):
+                training_data,
+                target_data,
+                H0=None,
+                training_labels=None,
+                feature_names=None,
+                categorical_features=None,
+                categorical_names=None,
+                kernel_width=None,
+                kernel=None,
+                verbose=False,
+                discretize_continuous=True,
+                discretizer='quartile',
+                sample_around_instance=False,
+                random_state=None,
+                training_data_stats=None):
+
         """Init function.
 
         Args:
-            training_data: numpy 2d array
-            target_data: information about the event and times
-            mode: "classification" or "regression"
+            training_data: numpy 2d array.
+            target_data: information about the event and times.
+            H0: To do: complete this part.
             training_labels: labels for training data. Not required, but may be
                 used by discretizer.
             feature_names: list of names (strings) corresponding to the columns
@@ -77,18 +55,11 @@ class LimeTabularExplainer(object):
                 categorical_names[x][y] represents the name of the yth value of
                 column x.
             kernel_width: kernel width for the exponential kernel.
-                If None, defaults to sqrt (number of columns) * 0.75
+                If None, defaults to sqrt (number of columns) * 0.75.
             kernel: similarity kernel that takes euclidean distances and kernel
                 width as input and outputs weights in (0,1). If None, defaults to
                 an exponential kernel.
-            verbose: if true, print local prediction values from linear model
-            class_names: list of class names, ordered according to whatever the
-                classifier is using. If not present, class names will be '0',
-                '1', ...
-            feature_selection: feature selection method. can be
-                'forward_selection', 'lasso_path', 'none' or 'auto'.
-                See function 'explain_instance_with_data' in lime_base.py for
-                details on what each of the options does.
+            verbose: if true, print local prediction values from linear model.
             discretize_continuous: if True, all non-categorical features will
                 be discretized into quartiles.
             discretizer: only matters if discretize_continuous is True
@@ -106,14 +77,16 @@ class LimeTabularExplainer(object):
                 if discretize_continuous is True. Must have the following keys:
                 means", "mins", "maxs", "stds", "feature_values",
                 "feature_frequencies"
+
+        Returns:
+            To do: complete
+
         """
-        
+
         self.random_state = check_random_state(random_state)
         self.categorical_names = categorical_names or {}
         self.sample_around_instance = sample_around_instance
         self.training_data_stats = training_data_stats
-
-        # SurvLIME changes
         self.H0 = H0
         self.train_events = [y[0] for y in target_data]
         self.train_times = [y[1] for y in target_data]
@@ -121,12 +94,15 @@ class LimeTabularExplainer(object):
         # Check and raise proper error in stats are supplied in non-descritized path
         if self.training_data_stats:
             self.validate_training_data_stats(self.training_data_stats)
+        if len(self.H0.shape) != 2:
+            raise IndexError('H0 must be a 2 dimensional array.')
+        if self.H0.shape[1] != 1:
+             raise IndexError('The length of the last axis of must be equal to 1.')
 
         if categorical_features is None:
             categorical_features = []
         if feature_names is None:
             feature_names = [str(i) for i in range(training_data.shape[1])]
-
 
         self.categorical_features = list(categorical_features)
         self.feature_names = list(feature_names)
@@ -177,8 +153,6 @@ class LimeTabularExplainer(object):
                 return np.sqrt(np.exp(-(d ** 2) / kernel_width ** 2))
 
         self.kernel_fn = partial(kernel, kernel_width=kernel_width)
-        
-        self.feature_selection = feature_selection
         self.base = lime_base.LimeBase(self.kernel_fn, verbose, random_state=self.random_state)
 
         # Though set has no role to play if training data stats are provided
@@ -210,10 +184,6 @@ class LimeTabularExplainer(object):
                                                  float(sum(frequencies)))
             self.scaler.mean_[feature] = 0
             self.scaler.scale_[feature] = 1
-
-    @staticmethod
-    def convert_and_round(values):
-        return ['%.2f' % v for v in values]
 
     @staticmethod
     def validate_training_data_stats(training_data_stats):
