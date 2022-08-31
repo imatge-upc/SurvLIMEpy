@@ -146,6 +146,9 @@ def compare_survival_times(bb_model : Union[CoxPHSurvivalAnalysis, Module, Rando
         plt.title(f'Mean survival time comparison RMSE: {rmse:.3}')
 
 
+def compute_rmse(compt_weights : pd.DataFrame, coefficients : List):
+    return np.sqrt(np.mean(np.sum(np.square(compt_weights - coefficients), axis=1)))
+
 def compute_kolmogorov_test(first_sample : np.ndarray, second_sample : np.ndarray):
     """
     Computes the Kolmogorov Smirnoff tests given two samples
@@ -163,38 +166,3 @@ def compute_kolmogorov_test(first_sample : np.ndarray, second_sample : np.ndarra
     test_result = sp.stats.ks_2samp(first_sample, second_sample)
 
     return test_result
-
-def has_arg(fn, arg_name):
-    """Checks if a callable accepts a given keyword argument.
-
-    Args:
-        fn: callable to inspect
-        arg_name: string, keyword argument name to check
-
-    Returns:
-        bool, whether `fn` accepts a `arg_name` keyword argument.
-    """
-    if sys.version_info < (3,):
-        if isinstance(fn, types.FunctionType) or isinstance(fn, types.MethodType):
-            arg_spec = inspect.getargspec(fn)
-        else:
-            try:
-                arg_spec = inspect.getargspec(fn.__call__)
-            except AttributeError:
-                return False
-        return (arg_name in arg_spec.args)
-    elif sys.version_info < (3, 6):
-        arg_spec = inspect.getfullargspec(fn)
-        return (arg_name in arg_spec.args or
-                arg_name in arg_spec.kwonlyargs)
-    else:
-        try:
-            signature = inspect.signature(fn)
-        except ValueError:
-            # handling Cython
-            signature = inspect.signature(fn.__call__)
-        parameter = signature.parameters.get(arg_name)
-        if parameter is None:
-            return False
-        return (parameter.kind in (inspect.Parameter.POSITIONAL_OR_KEYWORD,
-                                   inspect.Parameter.KEYWORD_ONLY))

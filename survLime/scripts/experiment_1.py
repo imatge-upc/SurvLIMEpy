@@ -1,5 +1,7 @@
 from typing import List, Union
 
+from functools import partial
+
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
@@ -18,24 +20,23 @@ def experiment_1():
     cluster_0, cluster_1 = create_clusters()
     
     # Experiment 1.1
-    x_train_1, x_test_1, y_train_1, y_test_1 = train_test_split(cluster_0[0], cluster_0[1], test_size=0.1)
+    x_train_1, x_test_1, y_train_1, y_test_1 = train_test_split(cluster_0[0], cluster_0[1], test_size=0.1, random_state=10)
     df = experiment([x_train_1, y_train_1], [x_test_1, y_test_1], exp_name='1.1')
 
     # Experiment 1.2
-    x_train_2, x_test_2, y_train_2, y_test_2 = train_test_split(cluster_1[0], cluster_1[1], test_size=0.1)
+    x_train_2, x_test_2, y_train_2, y_test_2 = train_test_split(cluster_1[0], cluster_1[1], test_size=0.1, random_state=10)
     df = experiment([x_train_2, y_train_2], [x_test_2, y_test_2], exp_name='1.2')
 
     # Experiment 1.3
     # here we train with all the data but we test it with one cluster at a time
     X_3 = np.concatenate([cluster_0[0], cluster_1[0]]); y_3 = np.concatenate([cluster_0[1], cluster_1[1]])
-    x_train, x_test, y_train, y_test = train_test_split(X_3, y_3, test_size=0.5)
-    x_train, x_test, y_train, y_test = train_test_split(x_train, y_train, test_size=0.1)
+    x_train, x_test, y_train, y_test = train_test_split(X_3, y_3, test_size=0.5, random_state=10)
+    x_train, x_test, y_train, y_test = train_test_split(x_train, y_train, test_size=0.1, random_state=10)
     df = experiment([x_train, y_train], [[x_test_1, x_test_2], [y_test_1, y_test_2]], exp_name='1.3')
 
 def experiment(train : List, test : List, model_type : str='cox', exp_name : str='1.1'):
     """
     This is going to be the same for all the experiments, we should define it generally
-
 
     """
     x_train = train[0]; y_train = train[1]
@@ -47,37 +48,44 @@ def experiment(train : List, test : List, model_type : str='cox', exp_name : str
     else:
         raise AssertionError(f'The model {model_type} needs to be either [cox or rsf]')
 
-    times_to_fill = list(set(y_train[1])); times_to_fill.sort()
+    times_to_fill = list(set([x[1] for x in y_train])); times_to_fill.sort()
     columns = ['one','two',' three', 'four', 'five']
+    model.fit(x_train, y_train)
+    model.feature_names_in_ = columns 
+    
+    H0 = model.cum_baseline_hazard_.y.reshape(len(times_to_fill), 1)
+    explainer = survlime_tabular.LimeTabularExplainer(x_train,
+                                                      y_train
+                                                      )
 
-    explainer = survlime_tabular.LimeTabularExplainer(x_train, target_data=y_train, feature_names=columns, class_names=None,
-                                                   categorical_features=None, verbose=True, discretize_continuous=False)
     if exp_name=='1.3':
-       x_test = test[0] 
-   #computation_exp = compute_weights(explainer, x_test, model)
-   #computation_exp.to_csv(f'/home/carlos.hernandez/PhD/SurvLIME/exp_{exp_name}_surv_weights.csv', index=False)
-
+       x_test = test[0][0]
+    computation_exp = compute_weights(explainer, x_test, model)
+    computation_exp.to_csv(f'/home/carlos.hernandez/PhD/SurvLIME/exp_{exp_name}_surv_weights_na.csv', index=False)
     # These three lines are not pretty but they get the job done
     if exp_name=='1.3':
-      exp_name='1.3.2'
-      x_test = test[1]
-    computation_exp = 'hehe'
-     # computation_exp = compute_weights(explainer, x_test, model)
-     #computation_exp.to_csv(f'/home/carlos.hernandez/PhD/SurvLIME/exp_{exp_name}_surv_weights.csv', index=False)
+        exp_name='1.3.2'
+        x_test = test[0][1]
+        computation_exp = compute_weights(explainer, x_test, model)
+        computation_exp.to_csv(f'/home/carlos.hernandez/PhD/SurvLIME/exp_{exp_name}_surv_weights_na.csv', index=False)
     return computation_exp
 
 def compute_weights(explainer : survlime_tabular.LimeTabularExplainer, x_test : np.ndarray, model : Union[CoxPHSurvivalAnalysis, RandomSurvivalForest]):
     compt_weights = []
-    num_pat = 200
+    num_pat = 1000
+    predict_chf = partial(model.predict_cumulative_hazard_function, return_array=True)
     for test_point in tqdm(x_test):
-        H_i_j_wc, weights, log_correction, Ho_t_, scaled_data = \
-                        explainer.explain_instance(test_point, model.predict_survival_function, num_samples = num_pat)
+        b, result= \
+                        explainer.explain_instance(test_point, predict_chf, verbose=False, num_samples = num_pat)
 
-        b = explainer.solve_opt_problem(H_i_j_wc, weights, log_correction, Ho_t_, scaled_data, verbose=False)
+        import ipdb;ipdb.set_trace()
+        b = [x[0] for x in b]
         compt_weights.append(b)
+    columns = ['one','two','threen', 'four', 'five']
     computation_exp = pd.DataFrame(compt_weights, columns=columns)
 
     return computation_exp 
+
 
 def create_clusters():
     """

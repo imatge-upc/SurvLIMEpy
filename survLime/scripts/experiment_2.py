@@ -17,15 +17,6 @@ def main(args):
 
     train, val, test = loader.preprocess_datasets(x, events, times, random_seed=args.rs)
 
-    events_train = [x[0] for x in train[1]]
-    times_train  = [x[1] for x in train[1]]
-
-    events_val = [x[0] for x in val[1]]
-    times_val  = [x[1] for x in val[1]]
-
-    events_test = [x[0] for x in test[1]]
-    times_test  = [x[1] for x in test[1]]
-    
     if args.model=='cox':
         model = CoxPHSurvivalAnalysis(alpha=0.0001)
     elif args.model=='rsf':
@@ -38,19 +29,19 @@ def main(args):
     columns = test[0].columns.tolist()
     num_pat = 1000
 
-    explainer = survlime_tabular.LimeTabularExplainer(train[0], target_data=train[1], feature_names=columns, class_names=None,
+    explainer = survlime_tabular.LimeTabularExplainer(train[0], model=model, target_data=train[1], feature_names=columns, class_names=None,
                                                        categorical_features=None, verbose=True, mode='regression', discretize_continuous=False)
     compt_weights = []
     for test_point in tqdm(test[0].values):
-        H_i_j_wc, weights, log_correction, Ho_t_, scaled_data = \
-                        explainer.explain_instance(test_point, model.predict_survival_function, num_samples = num_pat)
-        
-        b = explainer.solve_opt_problem(H_i_j_wc, weights, log_correction, Ho_t_, scaled_data, verbose=False)
+        b = explainer.explain_instance(test_point, model.predict_survival_function,
+                                                                    num_samples = num_pat)
+        b = [x[0] for x in b]
+        print(b)
         compt_weights.append(b)
     
     computation = pd.DataFrame(compt_weights, columns=columns)
+    computation.to_csv(f'/home/carlos.hernandez/PhD/SurvLIME/{args.dataset}_surv_weights_rs_{args.rs}_na.csv', index=False)
 
-    computation.to_csv(f'/home/carlos.hernandez/PhD/SurvLIME/{args.dataset}_surv_weights_rs_{args.rs}.csv', index=False)
 if __name__=='__main__':
     parser = argparse.ArgumentParser(description='Obtain SurvLIME results for a given dataset')
     parser.add_argument('--dataset', type=str, default='veterans', help='either veterans, lungs, udca or pbc')

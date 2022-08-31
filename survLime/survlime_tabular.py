@@ -4,6 +4,7 @@ import cvxpy as cp
 import sklearn
 import sklearn.preprocessing
 from sklearn.utils import check_random_state
+from sksurv.nonparametric import nelson_aalen_estimator
 
 
 class LimeTabularExplainer:
@@ -44,12 +45,13 @@ class LimeTabularExplainer:
         if H0 is None:
             # To do: use Nelson Alen estimator
             # self.H0 = ...
-            pass
+            # Careful with this!!! We should be taking the [1] out of the estimator
+            self.H0 = nelson_aalen_estimator(self.train_events, self.train_times)[1]
         else:
             self.H0 = H0
 
         # Validate H0 has the correct format
-        self.validate_H0(self.H0)
+        #self.validate_H0(self.H0)
 
         if kernel_width is None:
             kernel_width = np.sqrt(training_data.shape[1]) * 0.75
@@ -142,6 +144,7 @@ class LimeTabularExplainer:
         LnH = np.log(H)
 
         # Lo of baseline cumulative hazard
+        H0= np.reshape(self.H0, (m,1))
         LnH0 = np.log(H0)
 
         # Compute the log correction
@@ -173,7 +176,7 @@ class LimeTabularExplainer:
         objective = cp.Minimize(funct)
         prob = cp.Problem(objective)
         result = prob.solve(verbose=verbose)
-        return H_i_j_wc, weights, log_correction, scaled_data, b.value, result
+        return b.value, result # H_i_j_wc, weights, log_correction, scaled_data, 
 
     def generate_neighbours(self, data_row, num_samples):
         """Generates a neighborhood around a prediction.
