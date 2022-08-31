@@ -1,4 +1,5 @@
 from typing import List
+import os
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
@@ -6,12 +7,11 @@ from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sksurv.util import Surv
 
 
-# TODO make it work for any path
-user_path    = '/home/carlos.hernandez/PhD/'
-veteran_path = user_path + 'SurvLIME/survLime/datasets/veteran.csv'
-udca_path    = user_path + 'SurvLIME/survLime/datasets/udca_dataset.csv'
-pbc_path     = user_path + 'SurvLIME/survLime/datasets/pbc_dataset.csv'
-lung_path    = user_path + 'SurvLIME/survLime/datasets/lung_dataset.csv'
+data_path = os.path.abspath(os.path.dirname(__file__))
+veteran_path = os.path.join(data_path, "veteran.csv")
+udca_path = os.path.join(data_path, "udca_dataset.csv")
+pbc_path = os.path.join(data_path, "pbc_dataset.csv")
+lung_path = os.path.join(data_path, "lung_dataset.csv")
 
 
 class Loader():

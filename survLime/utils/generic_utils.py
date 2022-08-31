@@ -14,8 +14,6 @@ from sksurv.ensemble import RandomSurvivalForest
 from sksurv.linear_model import CoxPHSurvivalAnalysis
 
 
-from survLime import explanation
-
 def fill_matrix_with_total_times(total_times : list,
                                  predicted_surv : np.ndarray,
                                  event_times : np.ndarray):
@@ -148,6 +146,9 @@ def compare_survival_times(bb_model : Union[CoxPHSurvivalAnalysis, Module, Rando
         plt.title(f'Mean survival time comparison RMSE: {rmse:.3}')
 
 
+def compute_rmse(compt_weights : pd.DataFrame, coefficients : List):
+    return np.sqrt(np.mean(np.sum(np.square(compt_weights - coefficients), axis=1)))
+
 def compute_kolmogorov_test(first_sample : np.ndarray, second_sample : np.ndarray):
     """
     Computes the Kolmogorov Smirnoff tests given two samples
@@ -165,127 +166,3 @@ def compute_kolmogorov_test(first_sample : np.ndarray, second_sample : np.ndarra
     test_result = sp.stats.ks_2samp(first_sample, second_sample)
 
     return test_result
-
-def has_arg(fn, arg_name):
-    """Checks if a callable accepts a given keyword argument.
-
-    Args:
-        fn: callable to inspect
-        arg_name: string, keyword argument name to check
-
-    Returns:
-        bool, whether `fn` accepts a `arg_name` keyword argument.
-    """
-    if sys.version_info < (3,):
-        if isinstance(fn, types.FunctionType) or isinstance(fn, types.MethodType):
-            arg_spec = inspect.getargspec(fn)
-        else:
-            try:
-                arg_spec = inspect.getargspec(fn.__call__)
-            except AttributeError:
-                return False
-        return (arg_name in arg_spec.args)
-    elif sys.version_info < (3, 6):
-        arg_spec = inspect.getfullargspec(fn)
-        return (arg_name in arg_spec.args or
-                arg_name in arg_spec.kwonlyargs)
-    else:
-        try:
-            signature = inspect.signature(fn)
-        except ValueError:
-            # handling Cython
-            signature = inspect.signature(fn.__call__)
-        parameter = signature.parameters.get(arg_name)
-        if parameter is None:
-            return False
-        return (parameter.kind in (inspect.Parameter.POSITIONAL_OR_KEYWORD,
-                                   inspect.Parameter.KEYWORD_ONLY))
-
-class TableDomainMapper(explanation.DomainMapper):
-    """Maps feature ids to names, generates table views, etc"""
-
-    def __init__(self, feature_names, feature_values, scaled_row,
-                 categorical_features, discretized_feature_names=None,
-                 feature_indexes=None):
-        """Init.
-
-        Args:
-            feature_names: list of feature names, in order
-            feature_values: list of strings with the values of the original row
-            scaled_row: scaled row
-            categorical_features: list of categorical features ids (ints)
-            feature_indexes: optional feature indexes used in the sparse case
-        """
-        self.exp_feature_names = feature_names
-        self.discretized_feature_names = discretized_feature_names
-        self.feature_names = feature_names
-        self.feature_values = feature_values
-        self.feature_indexes = feature_indexes
-        self.scaled_row = scaled_row
-        if sp.sparse.issparse(scaled_row):
-            self.all_categorical = False
-        else:
-            self.all_categorical = len(categorical_features) == len(scaled_row)
-        self.categorical_features = categorical_features
-
-    def map_exp_ids(self, exp):
-        """Maps ids to feature names.
-
-        Args:
-            exp: list of tuples [(id, weight), (id,weight)]
-
-        Returns:
-            list of tuples (feature_name, weight)
-        """
-        names = self.exp_feature_names
-        if self.discretized_feature_names is not None:
-            names = self.discretized_feature_names
-        return [(names[x[0]], x[1]) for x in exp]
-
-    def visualize_instance_html(self,
-                                exp,
-                                label,
-                                div_name,
-                                exp_object_name,
-                                show_table=True,
-                                show_all=False):
-        """Shows the current example in a table format.
-
-        Args:
-             exp: list of tuples [(id, weight), (id,weight)]
-             label: label id (integer)
-             div_name: name of div object to be used for rendering(in js)
-             exp_object_name: name of js explanation object
-             show_table: if False, don't show table visualization.
-             show_all: if True, show zero-weighted features in the table.
-        """
-        if not show_table:
-            return ''
-        weights = [0] * len(self.feature_names)
-        for x in exp:
-            weights[x[0]] = x[1]
-        if self.feature_indexes is not None:
-            # Sparse case: only display the non-zero values and importances
-            fnames = [self.exp_feature_names[i] for i in self.feature_indexes]
-            fweights = [weights[i] for i in self.feature_indexes]
-            if show_all:
-                out_list = list(zip(fnames,
-                                    self.feature_values,
-                                    fweights))
-            else:
-                out_dict = dict(map(lambda x: (x[0], (x[1], x[2], x[3])),
-                                zip(self.feature_indexes,
-                                    fnames,
-                                    self.feature_values,
-                                    fweights)))
-                out_list = [out_dict.get(x[0], (str(x[0]), 0.0, 0.0)) for x in exp]
-        else:
-            out_list = list(zip(self.exp_feature_names,
-                                self.feature_values,
-                                weights))
-            if not show_all:
-                out_list = [out_list[x[0]] for x in exp]
-        ret = u'''
-            %s.show_raw_tabular(%s, %d, %s);
-        ''' % (exp_object_name, json.dumps(out_list, ensure_ascii=False), label, div_name)
-        return ret
