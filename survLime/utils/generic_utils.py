@@ -101,7 +101,7 @@ def compare_survival_times(bb_model : Union[CoxPHSurvivalAnalysis, Module, Rando
     times_train = [x[1] for x in y_train]
     times_to_fill = list(set(times_train)); times_to_fill.sort()
     
-    model_interpretable = CoxPHSurvivalAnalysis()
+    model_interpretable = CoxPHSurvivalAnalysis(alpha=0.0001)
     model_interpretable.fit(X_train, y_train)
     model_interpretable.coef_ = coefs
     # Obtain the predictions from both models
