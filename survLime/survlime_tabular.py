@@ -158,10 +158,10 @@ class LimeTabularExplainer:
 
         # Reshape and log of predictions
         H = np.reshape(np.array(H_i_j_wc), newshape=(num_samples, m))
-        LnH = np.log(H)
+        LnH = np.log(H + epsilon)
 
         # Log of baseline cumulative hazard
-        LnH0 = np.log(H0)
+        LnH0 = np.log(H0 + epsilon)
 
         # Compute the log correction
         logs = np.reshape(log_correction, newshape=(num_samples, m))
