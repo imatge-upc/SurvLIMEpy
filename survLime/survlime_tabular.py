@@ -144,7 +144,7 @@ class LimeTabularExplainer:
         LnH = np.log(H)
 
         # Lo of baseline cumulative hazard
-        H0 = np.reshape(self.H0, newshape=(m, 1))
+#        H0 = np.reshape(self.H0, newshape=(m, 1))
         LnH0 = np.log(H0)
 
         # Compute the log correction
