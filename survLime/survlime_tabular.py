@@ -43,10 +43,9 @@ class LimeTabularExplainer:
         self.train_events = [y[0] for y in target_data]
         self.train_times = [y[1] for y in target_data]
         if H0 is None:
-            # To do: use Nelson Alen estimator
-            # self.H0 = ...
-            # Careful with this!!! We should be taking the [1] out of the estimator
-            self.H0 = nelson_aalen_estimator(self.train_events, self.train_times)[1]
+            self.H0 = self.compute_nelson_aalen_estimator(
+                self.train_events, self.train_times
+            )
         else:
             self.H0 = H0
 
@@ -72,6 +71,14 @@ class LimeTabularExplainer:
         # I tried switching it to false and it gave the same mean and variance
         self.scaler = sklearn.preprocessing.StandardScaler(with_mean=False)
         self.scaler.fit(training_data)
+
+    @staticmethod
+    def compute_nelson_aalen_estimator(event, time):
+        nelson_aalen = nelson_aalen_estimator(event, time)
+        H0 = nelson_aalen[1]
+        m = H0.shape[0]
+        H0 = np.reshape(H0, newshape=(m, 1))
+        return H0
 
     @staticmethod
     def validate_H0(H0):
@@ -143,8 +150,7 @@ class LimeTabularExplainer:
         H = np.reshape(np.array(H_i_j_wc), newshape=(num_samples, m))
         LnH = np.log(H)
 
-        # Lo of baseline cumulative hazard
-#        H0 = np.reshape(self.H0, newshape=(m, 1))
+        # Log of baseline cumulative hazard
         LnH0 = np.log(H0)
 
         # Compute the log correction
