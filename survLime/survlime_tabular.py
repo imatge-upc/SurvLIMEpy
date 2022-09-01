@@ -3,8 +3,10 @@ import numpy as np
 import cvxpy as cp
 import sklearn
 import sklearn.preprocessing
+import pandas as pd
 from sklearn.utils import check_random_state
 from sksurv.nonparametric import nelson_aalen_estimator
+from typing import Callable, Tuple, Union
 
 
 class LimeTabularExplainer:
@@ -19,14 +21,14 @@ class LimeTabularExplainer:
 
     def __init__(
         self,
-        training_data,
-        target_data,
-        H0=None,
-        kernel_width=None,
-        kernel=None,
-        sample_around_instance=False,
-        random_state=None,
-    ):
+        training_data: Union[np.ndarray, pd.DataFrame],
+        target_data: Union[np.ndarray, pd.DataFrame],
+        H0: np.ndarray = None,
+        kernel_width: float = None,
+        kernel: Callable = None,
+        sample_around_instance: bool = False,
+        random_state: int = None,
+    ) -> None:
 
         """Init function.
 
@@ -58,7 +60,7 @@ class LimeTabularExplainer:
 
         if kernel is None:
 
-            def kernel(d, kernel_width):
+            def kernel(d: np.ndarray, kernel_width: float) -> np.ndarray:
                 return np.sqrt(np.exp(-(d**2) / kernel_width**2))
 
         self.kernel_fn = partial(kernel, kernel_width=kernel_width)
@@ -73,7 +75,9 @@ class LimeTabularExplainer:
         self.scaler.fit(training_data)
 
     @staticmethod
-    def compute_nelson_aalen_estimator(event, time):
+    def compute_nelson_aalen_estimator(
+        event: np.ndarray, time: np.ndarray
+    ) -> np.ndarray:
         nelson_aalen = nelson_aalen_estimator(event, time)
         H0 = nelson_aalen[1]
         m = H0.shape[0]
@@ -81,7 +85,7 @@ class LimeTabularExplainer:
         return H0
 
     @staticmethod
-    def validate_H0(H0):
+    def validate_H0(H0: np.ndarray) -> None:
         if len(H0.shape) != 2:
             raise IndexError('H0 must be a 2 dimensional array.')
         if H0.shape[1] != 1:
@@ -89,12 +93,12 @@ class LimeTabularExplainer:
 
     def explain_instance(
         self,
-        data_row,
-        predict_fn,
-        num_samples=5000,
-        distance_metric='euclidean',
-        verbose=False,
-    ):
+        data_row: np.ndarray,
+        predict_fn: Callable,
+        num_samples: int = 5000,
+        distance_metric: str = 'euclidean',
+        verbose: bool = False,
+    ) -> Tuple[np.ndarray, float]:
         """Generates explanations for a prediction.
 
         To do
@@ -124,8 +128,14 @@ class LimeTabularExplainer:
         )
 
     def solve_opt_problem(
-        self, predict_fn, num_samples, weights, H0, scaled_data, verbose
-    ):
+        self,
+        predict_fn: Callable,
+        num_samples: int,
+        weights: np.ndarray,
+        H0: np.ndarray,
+        scaled_data: np.ndarray,
+        verbose: float,
+    ) -> Tuple[np.ndarray, float]:
         """Solves the convex problem proposed in: https://arxiv.org/pdf/2003.08371.pdfF
 
         Args:
@@ -184,7 +194,7 @@ class LimeTabularExplainer:
         result = prob.solve(verbose=verbose)
         return b.value, result  # H_i_j_wc, weights, log_correction, scaled_data,
 
-    def generate_neighbours(self, data_row, num_samples):
+    def generate_neighbours(self, data_row: np.ndarray, num_samples: int) -> np.ndarray:
         """Generates a neighborhood around a prediction.
 
         To do
