@@ -3,9 +3,10 @@ import numpy as np
 import cvxpy as cp
 import sklearn
 import sklearn.preprocessing
+import pandas as pd
 from sklearn.utils import check_random_state
 from sksurv.nonparametric import nelson_aalen_estimator
-from typing import Callable, Tuple
+from typing import Callable, Tuple, Union
 
 
 class LimeTabularExplainer:
@@ -20,8 +21,8 @@ class LimeTabularExplainer:
 
     def __init__(
         self,
-        training_data: np.ndarray,
-        target_data: np.ndarray,
+        training_data: Union[np.ndarray, pd.DataFrame],
+        target_data: Union[np.ndarray, pd.DataFrame],
         H0: np.ndarray = None,
         kernel_width: float = None,
         kernel: Callable = None,
