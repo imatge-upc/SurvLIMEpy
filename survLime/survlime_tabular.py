@@ -59,9 +59,7 @@ class LimeTabularExplainer:
         kernel_width = float(kernel_width)
 
         if kernel is None:
-
-            def kernel(d: np.ndarray, kernel_width: float) -> np.ndarray:
-                return np.sqrt(np.exp(-(d**2) / kernel_width**2))
+            kernel = self.obtain_kernel
 
         self.kernel_fn = partial(kernel, kernel_width=kernel_width)
 
@@ -73,6 +71,13 @@ class LimeTabularExplainer:
         # I tried switching it to false and it gave the same mean and variance
         self.scaler = sklearn.preprocessing.StandardScaler(with_mean=False)
         self.scaler.fit(training_data)
+        
+    @staticmethod
+    def obtain_kernel(
+        d: np.ndarray, kernel_width: float
+    ) -> np.ndarray:
+        return np.sqrt(np.exp(-(d**2) / kernel_width**2))
+
 
     @staticmethod
     def compute_nelson_aalen_estimator(
