@@ -1,4 +1,5 @@
 from functools import partial
+from typing import Callable, Tuple, Union
 import numpy as np
 import cvxpy as cp
 import sklearn
@@ -6,7 +7,8 @@ import sklearn.preprocessing
 import pandas as pd
 from sklearn.utils import check_random_state
 from sksurv.nonparametric import nelson_aalen_estimator
-from typing import Callable, Tuple, Union
+
+from survLime.utils.optimization import OptFuncionMaker
 
 
 class LimeTabularExplainer:
@@ -162,7 +164,6 @@ class LimeTabularExplainer:
 
         # Log of baseline cumulative hazard
         LnH0 = np.log(H0 + epsilon)
-
         # Compute the log correction
         logs = np.reshape(log_correction, newshape=(num_samples, m))
 
@@ -184,14 +185,13 @@ class LimeTabularExplainer:
         Z = scaled_data @ b
         D = Z @ ones_m_1.T
         E = C - D
-        E_sq = cp.square(E)
-        V_sq = cp.square(logs)
-        F = cp.multiply(E_sq, V_sq)
-        G = F @ delta_t
-        funct = G.T @ w
+
+        opt_maker = OptFuncionMaker(E, w, logs, delta_t)
+        funct = opt_maker.compute_function(norm='inf')
+
         objective = cp.Minimize(funct)
         prob = cp.Problem(objective)
-        result = prob.solve(verbose=verbose)
+        result = prob.solve(verbose=True)
         return b.value, result  # H_i_j_wc, weights, log_correction, scaled_data,
 
     def generate_neighbours(self, data_row: np.ndarray, num_samples: int) -> np.ndarray:
