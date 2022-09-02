@@ -52,7 +52,7 @@ class LimeTabularExplainer:
             self.H0 = H0
 
         # Validate H0 has the correct format
-        # self.validate_H0(self.H0)
+        self.validate_H0(self.H0)
 
         if kernel_width is None:
             kernel_width = np.sqrt(training_data.shape[1]) * 0.75
