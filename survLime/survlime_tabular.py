@@ -88,16 +88,16 @@ class LimeTabularExplainer:
     @staticmethod
     def validate_H0(H0: np.ndarray) -> None:
         if len(H0.shape) != 2:
-            raise IndexError('H0 must be a 2 dimensional array.')
+            raise IndexError("H0 must be a 2 dimensional array.")
         if H0.shape[1] != 1:
-            raise IndexError('The length of the last axis of must be equal to 1.')
+            raise IndexError("The length of the last axis of must be equal to 1.")
 
     def explain_instance(
         self,
         data_row: np.ndarray,
         predict_fn: Callable,
         num_samples: int = 5000,
-        distance_metric: str = 'euclidean',
+        distance_metric: str = "euclidean",
         verbose: bool = False,
     ) -> Tuple[np.ndarray, float]:
         """Generates explanations for a prediction.
@@ -186,7 +186,7 @@ class LimeTabularExplainer:
         E = C - D
 
         opt_maker = OptFuncionMaker(E, w, logs, delta_t)
-        funct = opt_maker.compute_function(norm='inf')
+        funct = opt_maker.compute_function(norm="inf")
 
         objective = cp.Minimize(funct)
         prob = cp.Problem(objective)

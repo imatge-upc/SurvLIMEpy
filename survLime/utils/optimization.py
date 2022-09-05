@@ -25,13 +25,13 @@ class OptFuncionMaker:
         self.delta_t = delta_t
 
     def compute_function(self, norm: Union[float, str] = 2) -> MulExp:
-        
-        if norm<1 and norm!='inf':
-            raise ValueError(f'norm should be greater than 1, given value {norm})
+
+        if isinstance(norm, float) and norm < 1:
+            raise ValueError(f"norm should be greater than 1, given value {norm}")
         if norm == 1:
             E_norm = cp.abs(self.E)
-        elif norm == 'inf':
-            E_norm = cp.norm(self.E, 'inf')
+        elif norm == "inf":
+            E_norm = cp.norm(self.E, "inf")
         elif norm % 2 != 0:
             E_abs = cp.abs(self.E)
             E_norm = cp.power(E_abs, norm)
