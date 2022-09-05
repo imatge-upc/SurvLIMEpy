@@ -98,6 +98,7 @@ class LimeTabularExplainer:
         predict_fn: Callable,
         num_samples: int = 5000,
         distance_metric: str = "euclidean",
+        norm: Union[float, str] = 2,
         verbose: bool = False,
     ) -> Tuple[np.ndarray, float]:
         """Generates explanations for a prediction.
@@ -125,6 +126,7 @@ class LimeTabularExplainer:
             weights=weights,
             H0=self.H0,
             scaled_data=scaled_data,
+            norm=norm,
             verbose=verbose,
         )
 
@@ -135,6 +137,7 @@ class LimeTabularExplainer:
         weights: np.ndarray,
         H0: np.ndarray,
         scaled_data: np.ndarray,
+        norm: Union[float, str],
         verbose: float,
     ) -> Tuple[np.ndarray, float]:
         """Solves the convex problem proposed in: https://arxiv.org/pdf/2003.08371.pdfF
@@ -186,7 +189,7 @@ class LimeTabularExplainer:
         E = C - D
 
         opt_maker = OptFuncionMaker(E, w, logs, delta_t)
-        funct = opt_maker.compute_function(norm="inf")
+        funct = opt_maker.compute_function(norm=norm)
 
         objective = cp.Minimize(funct)
         prob = cp.Problem(objective)
