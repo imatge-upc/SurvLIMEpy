@@ -53,16 +53,14 @@ class LimeTabularExplainer:
             self.H0 = H0
 
         # Validate H0 has the correct format
-        # self.validate_H0(self.H0)
+        self.validate_H0(self.H0)
 
         if kernel_width is None:
             kernel_width = np.sqrt(training_data.shape[1]) * 0.75
         kernel_width = float(kernel_width)
 
         if kernel is None:
-
-            def kernel(d: np.ndarray, kernel_width: float) -> np.ndarray:
-                return np.sqrt(np.exp(-(d**2) / kernel_width**2))
+            kernel = self.obtain_kernel
 
         self.kernel_fn = partial(kernel, kernel_width=kernel_width)
 
@@ -74,6 +72,10 @@ class LimeTabularExplainer:
         # I tried switching it to false and it gave the same mean and variance
         self.scaler = sklearn.preprocessing.StandardScaler(with_mean=False)
         self.scaler.fit(training_data)
+
+    @staticmethod
+    def obtain_kernel(d: np.ndarray, kernel_width: float) -> np.ndarray:
+        return np.sqrt(np.exp(-(d**2) / kernel_width**2))
 
     @staticmethod
     def compute_nelson_aalen_estimator(
@@ -193,7 +195,7 @@ class LimeTabularExplainer:
 
         objective = cp.Minimize(funct)
         prob = cp.Problem(objective)
-        result = prob.solve(verbose=True)
+        result = prob.solve(verbose=verbose)
         return b.value, result  # H_i_j_wc, weights, log_correction, scaled_data,
 
     def generate_neighbours(self, data_row: np.ndarray, num_samples: int) -> np.ndarray:
