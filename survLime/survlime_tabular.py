@@ -1,4 +1,5 @@
 from functools import partial
+from typing import Callable, Tuple, Union
 import numpy as np
 import cvxpy as cp
 import sklearn
@@ -6,7 +7,7 @@ import sklearn.preprocessing
 import pandas as pd
 from sklearn.utils import check_random_state
 from sksurv.nonparametric import nelson_aalen_estimator
-from typing import Callable, Tuple, Union
+from survLime.utils.optimization import OptFuncionMaker
 
 
 class LimeTabularExplainer:
@@ -99,6 +100,7 @@ class LimeTabularExplainer:
         predict_fn: Callable,
         num_samples: int = 5000,
         distance_metric: str = "euclidean",
+        norm: Union[float, str] = 2,
         verbose: bool = False,
     ) -> Tuple[np.ndarray, float]:
         """Generates explanations for a prediction.
@@ -126,6 +128,7 @@ class LimeTabularExplainer:
             weights=weights,
             H0=self.H0,
             scaled_data=scaled_data,
+            norm=norm,
             verbose=verbose,
         )
 
@@ -136,6 +139,7 @@ class LimeTabularExplainer:
         weights: np.ndarray,
         H0: np.ndarray,
         scaled_data: np.ndarray,
+        norm: Union[float, str],
         verbose: float,
     ) -> Tuple[np.ndarray, float]:
         """Solves the convex problem proposed in: https://arxiv.org/pdf/2003.08371.pdfF
@@ -164,7 +168,6 @@ class LimeTabularExplainer:
 
         # Log of baseline cumulative hazard
         LnH0 = np.log(H0 + epsilon)
-
         # Compute the log correction
         logs = np.reshape(log_correction, newshape=(num_samples, m))
 
@@ -186,11 +189,10 @@ class LimeTabularExplainer:
         Z = scaled_data @ b
         D = Z @ ones_m_1.T
         E = C - D
-        E_sq = cp.square(E)
-        V_sq = cp.square(logs)
-        F = cp.multiply(E_sq, V_sq)
-        G = F @ delta_t
-        funct = G.T @ w
+
+        opt_maker = OptFuncionMaker(E, w, logs, delta_t)
+        funct = opt_maker.compute_function(norm=norm)
+
         objective = cp.Minimize(funct)
         prob = cp.Problem(objective)
         result = prob.solve(verbose=verbose)
