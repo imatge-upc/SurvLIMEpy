@@ -3,6 +3,7 @@ import numpy as np
 import cvxpy as cp
 from cvxpy.atoms.affine.binary_operators import MulExpression as MulExp
 
+
 class OptFuncionMaker:
     """TODO
     Given certain input parameters, this class
