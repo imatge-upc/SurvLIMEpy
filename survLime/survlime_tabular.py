@@ -52,16 +52,14 @@ class LimeTabularExplainer:
             self.H0 = H0
 
         # Validate H0 has the correct format
-        # self.validate_H0(self.H0)
+        self.validate_H0(self.H0)
 
         if kernel_width is None:
             kernel_width = np.sqrt(training_data.shape[1]) * 0.75
         kernel_width = float(kernel_width)
 
         if kernel is None:
-
-            def kernel(d: np.ndarray, kernel_width: float) -> np.ndarray:
-                return np.sqrt(np.exp(-(d**2) / kernel_width**2))
+            kernel = self.obtain_kernel
 
         self.kernel_fn = partial(kernel, kernel_width=kernel_width)
 
@@ -73,6 +71,10 @@ class LimeTabularExplainer:
         # I tried switching it to false and it gave the same mean and variance
         self.scaler = sklearn.preprocessing.StandardScaler(with_mean=False)
         self.scaler.fit(training_data)
+
+    @staticmethod
+    def obtain_kernel(d: np.ndarray, kernel_width: float) -> np.ndarray:
+        return np.sqrt(np.exp(-(d**2) / kernel_width**2))
 
     @staticmethod
     def compute_nelson_aalen_estimator(
@@ -87,16 +89,16 @@ class LimeTabularExplainer:
     @staticmethod
     def validate_H0(H0: np.ndarray) -> None:
         if len(H0.shape) != 2:
-            raise IndexError('H0 must be a 2 dimensional array.')
+            raise IndexError("H0 must be a 2 dimensional array.")
         if H0.shape[1] != 1:
-            raise IndexError('The length of the last axis of must be equal to 1.')
+            raise IndexError("The length of the last axis of must be equal to 1.")
 
     def explain_instance(
         self,
         data_row: np.ndarray,
         predict_fn: Callable,
         num_samples: int = 5000,
-        distance_metric: str = 'euclidean',
+        distance_metric: str = "euclidean",
         verbose: bool = False,
     ) -> Tuple[np.ndarray, float]:
         """Generates explanations for a prediction.
