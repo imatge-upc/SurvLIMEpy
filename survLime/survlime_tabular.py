@@ -7,7 +7,6 @@ import sklearn.preprocessing
 import pandas as pd
 from sklearn.utils import check_random_state
 from sksurv.nonparametric import nelson_aalen_estimator
-
 from survLime.utils.optimization import OptFuncionMaker
 
 
