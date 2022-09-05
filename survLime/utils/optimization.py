@@ -1,8 +1,7 @@
 from typing import Union
 import numpy as np
 import cvxpy as cp
-import cvxpy.atoms.affine.binary_operators.MulExpression as MulExp
-
+from cvxpy.atoms.affine.binary_operators import MulExpression as MulExp
 
 class OptFuncionMaker:
     """TODO
