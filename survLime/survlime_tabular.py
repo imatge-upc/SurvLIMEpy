@@ -34,11 +34,16 @@ class LimeTabularExplainer:
         """Init function.
 
         Args:
-            To do
+            training_data (Union[np.ndarray, pd.DataFrame]): data used to train the bb model
+            target_data (Union[np.ndarray, pd.DataFrame]): target data used to train the bb model
+            H0 (np.ndarray): baseline cumulative hazard
+            kernel_width (float): width of the kernel to be used for computing distances
+            kernel (Callable): kernel function to be used for computing distances
+            sample_around_instance (bool): whether we sample around instances or not
+            random_state (int): number to be used for random seeds
 
         Returns:
-            To do
-
+            None
         """
 
         self.random_state = check_random_state(random_state)
@@ -53,14 +58,16 @@ class LimeTabularExplainer:
             self.H0 = H0
 
         # Validate H0 has the correct format
-        self.validate_H0(self.H0)
+        # self.validate_H0(self.H0)
 
         if kernel_width is None:
             kernel_width = np.sqrt(training_data.shape[1]) * 0.75
         kernel_width = float(kernel_width)
 
         if kernel is None:
-            kernel = self.obtain_kernel
+
+            def kernel(d: np.ndarray, kernel_width: float) -> np.ndarray:
+                return np.sqrt(np.exp(-(d**2) / kernel_width**2))
 
         self.kernel_fn = partial(kernel, kernel_width=kernel_width)
 
@@ -72,10 +79,6 @@ class LimeTabularExplainer:
         # I tried switching it to false and it gave the same mean and variance
         self.scaler = sklearn.preprocessing.StandardScaler(with_mean=False)
         self.scaler.fit(training_data)
-
-    @staticmethod
-    def obtain_kernel(d: np.ndarray, kernel_width: float) -> np.ndarray:
-        return np.sqrt(np.exp(-(d**2) / kernel_width**2))
 
     @staticmethod
     def compute_nelson_aalen_estimator(
@@ -105,13 +108,17 @@ class LimeTabularExplainer:
     ) -> Tuple[np.ndarray, float]:
         """Generates explanations for a prediction.
 
-        To do
-
         Args:
-            To do
+            data_row (np.ndarray): data point to be explained
+            predict_fn (Callable): function that computes cumulative hazard
+            num_samples (int): number of neighbours to use
+            distance_metric (str): metric to be used for computing neighbours distance to the original point
+            norm (Union[float, str]): number 
+            verbose (bool = False):
 
         Returns:
-            To do
+            b.values (np.ndarray): obtained weights from the convex problem. 
+            result (float): residual value of the convex problem.
         """
 
         scaled_data = self.generate_neighbours(data_row, num_samples)
@@ -145,10 +152,17 @@ class LimeTabularExplainer:
         """Solves the convex problem proposed in: https://arxiv.org/pdf/2003.08371.pdfF
 
         Args:
-            # To do
+            predict_fn (Callable): function to compute the cumulative hazard.
+            num_samples (int): number of neighbours.
+            weights (np.ndarray): distance weights computed for each data point.
+            H0 (np.ndarray): baseline cumulative hazard.
+            scaled_data (np.ndarray): original data point and the computed neighbours.
+            norm (Union[float, str]: number of the norm to be computed in the cvx problem.
+            verbose (float): activate verbosity of the cvxpy solver.
 
         Returns:
-           To do
+            b.values (np.ndarray): obtained weights from the convex problem. 
+            result (float): residual value of the convex problem.
         """
         epsilon = 0.00000001
         num_features = scaled_data.shape[1]
@@ -201,13 +215,12 @@ class LimeTabularExplainer:
     def generate_neighbours(self, data_row: np.ndarray, num_samples: int) -> np.ndarray:
         """Generates a neighborhood around a prediction.
 
-        To do
-
         Args:
-            To do
+            data_row (np.ndarray): data point to be explained of shape (1 x features)
+            num_samples (int): number of neighbours to generate
 
         Returns:
-            To do
+            data (np.ndarray): original data point and neighbours with shape (num_samples x features) 
         """
         num_cols = data_row.shape[0]
         data = np.zeros((num_samples, num_cols))
