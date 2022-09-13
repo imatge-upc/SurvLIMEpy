@@ -96,11 +96,13 @@ class LimeTabularExplainer:
             raise IndexError("H0 must be a 2 dimensional array.")
         if H0.shape[1] != 1:
             raise IndexError("The length of the last axis of must be equal to 1.")
+    
 
     def explain_instance(
         self,
         data_row: np.ndarray,
         predict_fn: Callable,
+        model_output_times: np.ndarray,
         num_samples: int = 5000,
         distance_metric: str = "euclidean",
         norm: Union[float, str] = 2,
@@ -111,6 +113,7 @@ class LimeTabularExplainer:
         Args:
             data_row (np.ndarray): data point to be explained
             predict_fn (Callable): function that computes cumulative hazard
+            model_output_times (np.ndarray): times at which the cumulative hazard is computed
             num_samples (int): number of neighbours to use
             distance_metric (str): metric to be used for computing neighbours distance to the original point
             norm (Union[float, str]): number 
@@ -132,6 +135,7 @@ class LimeTabularExplainer:
         return self.solve_opt_problem(
             predict_fn=predict_fn,
             num_samples=num_samples,
+            model_output_times=model_output_times,
             weights=weights,
             H0=self.H0,
             scaled_data=scaled_data,
@@ -143,6 +147,7 @@ class LimeTabularExplainer:
         self,
         predict_fn: Callable,
         num_samples: int,
+        model_output_times: np.ndarray,
         weights: np.ndarray,
         H0: np.ndarray,
         scaled_data: np.ndarray,
@@ -154,6 +159,7 @@ class LimeTabularExplainer:
         Args:
             predict_fn (Callable): function to compute the cumulative hazard.
             num_samples (int): number of neighbours.
+            model_output_times (np.ndarray): times at which the cumulative hazard is computed.
             weights (np.ndarray): distance weights computed for each data point.
             H0 (np.ndarray): baseline cumulative hazard.
             scaled_data (np.ndarray): original data point and the computed neighbours.
@@ -169,8 +175,10 @@ class LimeTabularExplainer:
         m = len(set(self.train_times))
         # To do: validate H_i_j_wc
         H_i_j_wc = predict_fn(scaled_data)
-        times_to_fill = list(set(self.train_times))
+        times_to_fill = np.unique(self.train_times)
         times_to_fill.sort()
+        # To do: validate this is the correct way to fill the matrix
+        H_i_j_wc = np.array([np.interp(times_to_fill, model_output_times, H_i_j_wc[i]) for i in range(H_i_j_wc.shape[0])])
         log_correction = np.divide(H_i_j_wc, np.log(H_i_j_wc + epsilon))
 
         # Varible to look for
@@ -236,3 +244,4 @@ class LimeTabularExplainer:
             data = data * scale + mean
         data[0] = data_row.copy()
         return data
+
