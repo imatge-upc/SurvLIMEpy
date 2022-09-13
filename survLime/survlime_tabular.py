@@ -96,7 +96,6 @@ class LimeTabularExplainer:
             raise IndexError("H0 must be a 2 dimensional array.")
         if H0.shape[1] != 1:
             raise IndexError("The length of the last axis of must be equal to 1.")
-    
 
     def explain_instance(
         self,
@@ -116,11 +115,11 @@ class LimeTabularExplainer:
             model_output_times (np.ndarray): times at which the cumulative hazard is computed
             num_samples (int): number of neighbours to use
             distance_metric (str): metric to be used for computing neighbours distance to the original point
-            norm (Union[float, str]): number 
+            norm (Union[float, str]): number
             verbose (bool = False):
 
         Returns:
-            b.values (np.ndarray): obtained weights from the convex problem. 
+            b.values (np.ndarray): obtained weights from the convex problem.
             result (float): residual value of the convex problem.
         """
 
@@ -167,7 +166,7 @@ class LimeTabularExplainer:
             verbose (float): activate verbosity of the cvxpy solver.
 
         Returns:
-            b.values (np.ndarray): obtained weights from the convex problem. 
+            b.values (np.ndarray): obtained weights from the convex problem.
             result (float): residual value of the convex problem.
         """
         epsilon = 0.00000001
@@ -178,7 +177,12 @@ class LimeTabularExplainer:
         times_to_fill = np.unique(self.train_times)
         times_to_fill.sort()
         # To do: validate this is the correct way to fill the matrix
-        H_i_j_wc = np.array([np.interp(times_to_fill, model_output_times, H_i_j_wc[i]) for i in range(H_i_j_wc.shape[0])])
+        H_i_j_wc = np.array(
+            [
+                np.interp(times_to_fill, model_output_times, H_i_j_wc[i])
+                for i in range(H_i_j_wc.shape[0])
+            ]
+        )
         log_correction = np.divide(H_i_j_wc, np.log(H_i_j_wc + epsilon))
 
         # Varible to look for
@@ -228,7 +232,7 @@ class LimeTabularExplainer:
             num_samples (int): number of neighbours to generate
 
         Returns:
-            data (np.ndarray): original data point and neighbours with shape (num_samples x features) 
+            data (np.ndarray): original data point and neighbours with shape (num_samples x features)
         """
         num_cols = data_row.shape[0]
         data = np.zeros((num_samples, num_cols))
@@ -244,4 +248,3 @@ class LimeTabularExplainer:
             data = data * scale + mean
         data[0] = data_row.copy()
         return data
-
