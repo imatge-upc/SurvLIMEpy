@@ -37,7 +37,7 @@ class SurvLimeExplainer:
         Args:
             training_data (Union[np.ndarray, pd.DataFrame]): data used to train the bb model
             target_data (Union[np.ndarray, pd.DataFrame]): target data used to train the bb model
-            model_output_times (np.ndarray): times at which the cumulative hazard is computed
+            model_output_times (np.ndarray): output times of the bb model
             H0 (np.ndarray): baseline cumulative hazard
             kernel_width (float): width of the kernel to be used for computing distances
             kernel (Callable): kernel function to be used for computing distances
@@ -116,11 +116,11 @@ class SurvLimeExplainer:
             predict_fn (Callable): function that computes cumulative hazard
             num_samples (int): number of neighbours to use
             distance_metric (str): metric to be used for computing neighbours distance to the original point
-            norm (Union[float, str]): number
+            norm (Union[float, str]): number 
             verbose (bool = False):
 
         Returns:
-            b.values (np.ndarray): obtained weights from the convex problem.
+            b.values (np.ndarray): obtained weights from the convex problem. 
             result (float): residual value of the convex problem.
         """
 
@@ -164,7 +164,7 @@ class SurvLimeExplainer:
             verbose (float): activate verbosity of the cvxpy solver.
 
         Returns:
-            b.values (np.ndarray): obtained weights from the convex problem.
+            b.values (np.ndarray): obtained weights from the convex problem. 
             result (float): residual value of the convex problem.
         """
         epsilon = 0.00000001
@@ -172,15 +172,9 @@ class SurvLimeExplainer:
         m = len(set(self.train_times))
         # To do: validate H_i_j_wc
         H_i_j_wc = predict_fn(scaled_data)
-        times_to_fill = np.unique(self.train_times)
+        times_to_fill = list(set(self.train_times))
         times_to_fill.sort()
-        # To do: validate this is the correct way to fill the matrix
-        H_i_j_wc = np.array(
-            [
-                np.interp(times_to_fill, self.model_output_times, H_i_j_wc[i])
-                for i in range(H_i_j_wc.shape[0])
-            ]
-        )
+        H_i_j_wc = np.array([np.interp(times_to_fill, self.model_output_times, H_i_j_wc[i]) for i in range(H_i_j_wc.shape[0])])
         log_correction = np.divide(H_i_j_wc, np.log(H_i_j_wc + epsilon))
 
         # Varible to look for
@@ -230,7 +224,7 @@ class SurvLimeExplainer:
             num_samples (int): number of neighbours to generate
 
         Returns:
-            data (np.ndarray): original data point and neighbours with shape (num_samples x features)
+            data (np.ndarray): original data point and neighbours with shape (num_samples x features) 
         """
         num_cols = data_row.shape[0]
         data = np.zeros((num_samples, num_cols))
