@@ -99,7 +99,3 @@ def compute_weights(train: np.array, test: np.array, norm: float = 2) -> List[fl
     )
     b = [x[0] for x in b]
     return b
-
-
-if __name__ == "__main__":
-    test_shape_vetearns_computed_weights()
