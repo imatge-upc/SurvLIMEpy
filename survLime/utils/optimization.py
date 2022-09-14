@@ -1,6 +1,7 @@
+from typing import Union
 import numpy as np
 import cvxpy as cp
-import cvxpy.atoms.affine.binary_operators.MulExpression as MulExp
+from cvxpy.atoms.affine.binary_operators import MulExpression as MulExp
 
 
 class OptFuncionMaker:
@@ -12,10 +13,10 @@ class OptFuncionMaker:
 
     def __init__(
         self,
-        E: np.ndarray = None,
-        weights: np.ndarray = None,
-        log_correction: np.ndarray = None,
-        delta_t: np.ndarray = None,
+        E: np.ndarray,
+        weights: np.ndarray,
+        log_correction: np.ndarray,
+        delta_t: np.ndarray,
     ) -> None:
 
         self.E = E
@@ -23,13 +24,14 @@ class OptFuncionMaker:
         self.log_correction = log_correction
         self.delta_t = delta_t
 
-    def compute_function(self, norm: int = 2) -> MulExp:
-        
-        norm = 1
+    def compute_function(self, norm: Union[float, str] = 2) -> MulExp:
+
+        if isinstance(norm, float) and norm < 1:
+            raise ValueError(f"norm should be greater than 1, given value {norm}")
         if norm == 1:
             E_norm = cp.abs(self.E)
-        elif norm == 'inf':
-            E_norm = cp.norm(self.E, 'inf')
+        elif norm == "inf":
+            E_norm = cp.norm(self.E, "inf")
         elif norm % 2 != 0:
             E_abs = cp.abs(self.E)
             E_norm = cp.power(E_abs, norm)
