@@ -24,6 +24,7 @@ class LimeTabularExplainer:
         self,
         training_data: Union[np.ndarray, pd.DataFrame],
         target_data: Union[np.ndarray, pd.DataFrame],
+        model_output_times: np.ndarray,
         H0: np.ndarray = None,
         kernel_width: float = None,
         kernel: Callable = None,
@@ -36,6 +37,7 @@ class LimeTabularExplainer:
         Args:
             training_data (Union[np.ndarray, pd.DataFrame]): data used to train the bb model
             target_data (Union[np.ndarray, pd.DataFrame]): target data used to train the bb model
+            model_output_times (np.ndarray): times at which the cumulative hazard is computed
             H0 (np.ndarray): baseline cumulative hazard
             kernel_width (float): width of the kernel to be used for computing distances
             kernel (Callable): kernel function to be used for computing distances
@@ -50,6 +52,7 @@ class LimeTabularExplainer:
         self.sample_around_instance = sample_around_instance
         self.train_events = [y[0] for y in target_data]
         self.train_times = [y[1] for y in target_data]
+        self.model_output_times = model_output_times
         if H0 is None:
             self.H0 = self.compute_nelson_aalen_estimator(
                 self.train_events, self.train_times
@@ -101,7 +104,6 @@ class LimeTabularExplainer:
         self,
         data_row: np.ndarray,
         predict_fn: Callable,
-        model_output_times: np.ndarray,
         num_samples: int = 5000,
         distance_metric: str = "euclidean",
         norm: Union[float, str] = 2,
@@ -112,7 +114,6 @@ class LimeTabularExplainer:
         Args:
             data_row (np.ndarray): data point to be explained
             predict_fn (Callable): function that computes cumulative hazard
-            model_output_times (np.ndarray): times at which the cumulative hazard is computed
             num_samples (int): number of neighbours to use
             distance_metric (str): metric to be used for computing neighbours distance to the original point
             norm (Union[float, str]): number
@@ -134,7 +135,6 @@ class LimeTabularExplainer:
         return self.solve_opt_problem(
             predict_fn=predict_fn,
             num_samples=num_samples,
-            model_output_times=model_output_times,
             weights=weights,
             H0=self.H0,
             scaled_data=scaled_data,
@@ -146,7 +146,6 @@ class LimeTabularExplainer:
         self,
         predict_fn: Callable,
         num_samples: int,
-        model_output_times: np.ndarray,
         weights: np.ndarray,
         H0: np.ndarray,
         scaled_data: np.ndarray,
@@ -158,7 +157,6 @@ class LimeTabularExplainer:
         Args:
             predict_fn (Callable): function to compute the cumulative hazard.
             num_samples (int): number of neighbours.
-            model_output_times (np.ndarray): times at which the cumulative hazard is computed.
             weights (np.ndarray): distance weights computed for each data point.
             H0 (np.ndarray): baseline cumulative hazard.
             scaled_data (np.ndarray): original data point and the computed neighbours.
@@ -179,7 +177,7 @@ class LimeTabularExplainer:
         # To do: validate this is the correct way to fill the matrix
         H_i_j_wc = np.array(
             [
-                np.interp(times_to_fill, model_output_times, H_i_j_wc[i])
+                np.interp(times_to_fill, self.model_output_times, H_i_j_wc[i])
                 for i in range(H_i_j_wc.shape[0])
             ]
         )

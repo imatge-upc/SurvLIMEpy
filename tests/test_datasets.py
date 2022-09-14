@@ -73,7 +73,11 @@ def compute_weights(train: np.array, test: np.array) -> List[float]:
     times_to_fill = list(set([x[1] for x in train[1]]))
     times_to_fill.sort()
 
-    explainer = survlime_tabular.LimeTabularExplainer(train[0], train[1])
+    explainer = survlime_tabular.LimeTabularExplainer(
+                                                      train[0],
+                                                      train[1],
+                                                      model_output_times=model.event_times_
+                                                      )
 
     num_pat = 1000
     predict_chf = partial(model.predict_cumulative_hazard_function, return_array=True)
@@ -82,8 +86,7 @@ def compute_weights(train: np.array, test: np.array) -> List[float]:
         test_point,
         predict_chf,
         verbose=False,
-        num_samples=num_pat,
-        model_output_times=model.event_times_,
+        num_samples=num_pat
     )
     b = [x[0] for x in b]
     return b
