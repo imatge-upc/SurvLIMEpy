@@ -1,11 +1,9 @@
 from typing import List
 
-import pytest
 import numpy as np
 from functools import partial
 
 from sksurv.linear_model import CoxPHSurvivalAnalysis
-from sksurv.ensemble import RandomSurvivalForest
 
 from survLime import survlime_tabular
 from survLime.datasets.load_datasets import Loader
