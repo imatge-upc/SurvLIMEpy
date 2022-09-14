@@ -1,12 +1,9 @@
-from typing import List
-
 import numpy as np
 from functools import partial
-
 from sksurv.linear_model import CoxPHSurvivalAnalysis
-
 from survLime import survlime_explainer
 from survLime.datasets.load_datasets import Loader
+from typing import List
 
 
 def test_shape_veterans_preprocessed() -> None:
