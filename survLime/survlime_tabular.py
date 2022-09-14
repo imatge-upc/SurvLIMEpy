@@ -10,7 +10,7 @@ from sksurv.nonparametric import nelson_aalen_estimator
 from survLime.utils.optimization import OptFuncionMaker
 
 
-class LimeTabularExplainer:
+class SurvLimeExplainer:
     """To DO: change explanation
     Explains predictions on tabular (i.e. matrix) data.
     For numerical features, perturb them by sampling from a Normal(0,1) and

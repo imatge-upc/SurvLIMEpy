@@ -5,7 +5,7 @@ from functools import partial
 
 from sksurv.linear_model import CoxPHSurvivalAnalysis
 
-from survLime import survlime_tabular
+from survLime import survlime_explainer
 from survLime.datasets.load_datasets import Loader
 
 
@@ -84,11 +84,10 @@ def compute_weights(train: np.array, test: np.array, norm: float = 2) -> List[fl
     times_to_fill = list(set([x[1] for x in train[1]]))
     times_to_fill.sort()
 
-
     explainer = survlime_tabular.LimeTabularExplainer(
         train[0], train[1], model_output_times=model.event_times_
     )
-
+    
     num_pat = 1000
     predict_chf = partial(model.predict_cumulative_hazard_function, return_array=True)
     test_point = test[0].iloc[0]
