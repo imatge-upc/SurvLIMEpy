@@ -10,8 +10,8 @@ class NeighboursGenerator:
         self,
         training_data: Union[np.ndarray, pd.DataFrame],
         data_row: np.ndarray,
-        num_samples: int,
         categorical_features: List[int] = None,
+        random_state: int = None,
     ) -> None:
 
         """Init function.
@@ -19,8 +19,8 @@ class NeighboursGenerator:
         Args:
             training_data (Union[np.ndarray, pd.DataFrame]): data used to train the bb model
             data_row (np.ndarray): data point to be explained of shape (1 x features)
-            num_samples (int): number of neighbours to generate
-            categorical_features (List[int]): list of integeter indicating the categorical variables
+            categorical_features (List[int]): list of integeter indicating the categorical features
+            random_state (int): number to be used for random seeds
 
         Returns:
             None
@@ -32,7 +32,6 @@ class NeighboursGenerator:
             self.training_data = training_data
 
         self.data_row = data_row
-        self.num_samples = num_samples
         self.total_features = training_data.shape[1]
 
         if categorical_features is None:
@@ -52,6 +51,8 @@ class NeighboursGenerator:
             self.type_features = "categorical"
         else:
             self.type_features = "mixed"
+
+        self.random_state = random_state
 
     @staticmethod
     def to_dict(keys, values):
@@ -73,21 +74,59 @@ class NeighboursGenerator:
                 distribution[idx_feature] = self.to_dict(unique, count / total)
         return distribution
 
-    def generate_neighbours(self) -> np.ndarray:
-        """Generates a neighborhood around a prediction.
+    def generate_cont_neighbours(
+        self, num_samples: int, sample_around_instance: bool = False
+    ) -> np.ndarray:
+        """Generates a neighborhood around a prediction for continuous features
+
+        Args:
+            num_samples (int): number of neighbours to generate
+            sample_around_instance (bool): whether we sample around instances or not
 
         Returns:
             data (np.ndarray): original data point and neighbours with shape (num_samples x features)
         """
 
-        # 1 Generate neighbours for continuous variables
-        # 1.1 Get continuous features
-        # 1.2 Estimate mean and variance for continuous features
-        # 1.3 Generate neighbours
+        # Get continuous features
+        training_data_cont = self.training_data[:, self.cont_features]
 
-        # 2 Generate neighbours for categorical variables
-        # 2.1 Generate distribution for categorical variables
+        # Estimate mean and variance for continuous features
+        mean_value = np.nanmean(training_data_cont, axis=0, dtype=np.float64)
+        sd_value = np.nanstd(training_data_cont, axis=0, dtype=np.float64)
+
+        # Generate neighbours
+        neighbours = self.random_state.normal(
+            0, 1, size=(num_samples, self.total_cont_features)
+        )
+        neighbours *= sd_value
+
+        if sample_around_instance:
+            neighbours += self.data_row[self.cont_features]
+        else:
+            neighbours += mean_value
+
+        return neighbours
+
+    def generate_neighbours(
+        self, num_samples: int, sample_around_instance: bool = False
+    ) -> np.ndarray:
+        """Generates a neighborhood around a prediction.
+
+        Args:
+            num_samples (int): number of neighbours to generate
+            sample_around_instance (bool): whether we sample around instances or not
+
+        Returns:
+            data (np.ndarray): original data point and neighbours with shape (num_samples x features)
+        """
+
+        # 1 Generate neighbours for continuous features
+        X_neigh_cont = self.generate_cont_neighbours(
+            num_samples=num_samples, sample_around_instance=sample_around_instance
+        )
+
+        # 2 Generate neighbours for categorical features
+        # 2.1 Generate distribution for categorical features
         # 2.2 Generate neighbours
 
         # 3 Merge both datasets
-        pass
