@@ -40,7 +40,7 @@ class NeighboursGenerator:
             self.cat_features = categorical_features
 
         self.cont_features = [
-            i for i in range(self.total_features) if i not in categorical_features
+            i for i in range(self.total_features) if i not in self.cat_features
         ]
         self.total_cat_features = len(self.cat_features)
         self.total_cont_features = len(self.cont_features)
@@ -107,6 +107,34 @@ class NeighboursGenerator:
 
         return neighbours
 
+    def generate_cat_neighbours(self, num_samples: int) -> np.ndarray:
+        """Generates a neighborhood around a prediction for continuous features
+
+        Args:
+            num_samples (int): number of neighbours to generate
+
+        Returns:
+            data (np.ndarray): original data point and neighbours with shape (num_samples x features)
+        """
+
+        # Generate distribution for categorical features
+        cat_distribution = self.estimate_distribution_categorical_features()
+
+        # To do: puden ser enteros!!!!
+        neighbours = np.empty(shape=(num_samples, self.total_cat_features), dtype=np.string_)
+
+        # Generate neighbours
+        i = 0
+        for _, feat_distribution in cat_distribution.items():
+            feat_values = list(feat_distribution.keys())
+            probability_values = list(feat_distribution.values())
+            sample = self.random_state.choice(feat_values, size=num_samples, p=probability_values)
+            neighbours[:, i] = sample
+            i += 1
+
+        return neighbours
+
+
     def generate_neighbours(
         self, num_samples: int, sample_around_instance: bool = False
     ) -> np.ndarray:
@@ -120,13 +148,15 @@ class NeighboursGenerator:
             data (np.ndarray): original data point and neighbours with shape (num_samples x features)
         """
 
-        # 1 Generate neighbours for continuous features
+        # Generate neighbours for continuous features
         X_neigh_cont = self.generate_cont_neighbours(
             num_samples=num_samples, sample_around_instance=sample_around_instance
         )
 
-        # 2 Generate neighbours for categorical features
-        # 2.1 Generate distribution for categorical features
-        # 2.2 Generate neighbours
+        # Generate neighbours for categorical features
+        X_neigh_cat = self.generate_cat_neighbours(num_samples=num_samples)
 
-        # 3 Merge both datasets
+        # Merge both datasets
+        neighbours = np.concatenate((X_neigh_cont, X_neigh_cat), axis=1, casting="unsafe")
+        print(neighbours.shape)
+        print(neighbours[:3, ])
