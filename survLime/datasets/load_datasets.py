@@ -12,6 +12,7 @@ veteran_path = os.path.join(data_path, "veteran.csv")
 udca_path = os.path.join(data_path, "udca_dataset.csv")
 pbc_path = os.path.join(data_path, "pbc_dataset.csv")
 lung_path = os.path.join(data_path, "lung_dataset.csv")
+heart_path = os.path.join(data_path, "heart_dataset.csv")
 
 
 class Loader:
@@ -72,6 +73,22 @@ class Loader:
         elif dataset_name == "synthetic":
             ## TODO
             pass
+        elif dataset_name == "heart":
+            self.feature_columns = [
+                "age",
+                "anaemia",
+                "creatinine_phosphokinase",
+                "diabetes",
+                "ejection_fraction",
+                "high_blood_pressure",
+                "platelets",
+                "serum_creatinine",
+                "serum_sodium",
+                "sex",
+                "smoking",
+            ]
+            self.categorical_columns = []
+            self.df = pd.read_csv(heart_path)
         else:
             raise AssertionError(
                 f"The give name {dataset_name} was not found in [veterans, udca, pbc, lung]"
