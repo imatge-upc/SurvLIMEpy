@@ -1,9 +1,12 @@
 import numpy as np
 from functools import partial
 from sksurv.linear_model import CoxPHSurvivalAnalysis
+from sklearn.utils import check_random_state
 from survLime import survlime_explainer
+from survLime.utils.neighbours_generator import NeighboursGenerator
 from survLime.datasets.load_datasets import Loader
 from typing import List
+import pandas as pd
 
 
 def test_shape_veterans_preprocessed() -> None:
@@ -70,6 +73,33 @@ def test_norm_less_than_one() -> None:
         _ = compute_weights(train, test, norm=0.5)
     except ValueError:
         pass
+
+
+def test_categorical_features() -> None:
+
+    n = 100
+    random_state = check_random_state(2)
+    data = {
+        'col1': random_state.normal(size=n),
+        'col2': random_state.normal(size=n),
+        'col3': random_state.choice(a=['a', 'b', 'c'], size=n),
+        'col4': random_state.choice(a=['d', 'e', 'f'], size=n),
+    }
+
+    df = pd.DataFrame(data)
+    data_row = df.loc[0].to_numpy()
+
+    neighbours_generator = NeighboursGenerator(
+        training_data=df,
+        data_row=data_row,
+        categorical_features=[2, 3],
+        random_state=random_state,
+    )
+
+    neighbours = neighbours_generator.generate_neighbours(100)
+    neighbours_first = neighbours[0, 2:4]
+    expected_results = neighbours_first[0] == 'a' and neighbours_first[1] == 'f'
+    assert expected_results == True
 
 
 def compute_weights(train: np.array, test: np.array, norm: float = 2) -> List[float]:
