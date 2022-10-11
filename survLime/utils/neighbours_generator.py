@@ -119,21 +119,22 @@ class NeighboursGenerator:
 
         # Generate distribution for categorical features
         cat_distribution = self.estimate_distribution_categorical_features()
-
-        # To do: puden ser enteros!!!!
-        neighbours = np.empty(shape=(num_samples, self.total_cat_features), dtype=np.string_)
+        neighbours_list = []
 
         # Generate neighbours
         i = 0
         for _, feat_distribution in cat_distribution.items():
             feat_values = list(feat_distribution.keys())
             probability_values = list(feat_distribution.values())
-            sample = self.random_state.choice(feat_values, size=num_samples, p=probability_values)
-            neighbours[:, i] = sample
+            sample = self.random_state.choice(
+                feat_values, size=num_samples, p=probability_values
+            )
+            neighbours_list.append(sample)
             i += 1
 
+        neighbours = np.array(neighbours_list)
+        neighbours = neighbours.T
         return neighbours
-
 
     def generate_neighbours(
         self, num_samples: int, sample_around_instance: bool = False
@@ -149,14 +150,23 @@ class NeighboursGenerator:
         """
 
         # Generate neighbours for continuous features
-        X_neigh_cont = self.generate_cont_neighbours(
-            num_samples=num_samples, sample_around_instance=sample_around_instance
-        )
+        if self.type_features in ["continuous", "mixed"]:
+            X_neigh_cont = self.generate_cont_neighbours(
+                num_samples=num_samples, sample_around_instance=sample_around_instance
+            )
 
         # Generate neighbours for categorical features
-        X_neigh_cat = self.generate_cat_neighbours(num_samples=num_samples)
+        if self.type_features in ["categorical", "mixed"]:
+            X_neigh_cat = self.generate_cat_neighbours(num_samples=num_samples)
 
-        # Merge both datasets
-        neighbours = np.concatenate((X_neigh_cont, X_neigh_cat), axis=1, casting="unsafe")
-        print(neighbours.shape)
-        print(neighbours[:3, ])
+        # Create neighbours
+        if self.type_features == "continuous":
+            neighbours = np.copy(X_neigh_cont)
+        elif self.type_features == "categorical":
+            neighbours = np.copy(X_neigh_cat)
+        else:
+            neighbours = np.concatenate(
+                (X_neigh_cont, X_neigh_cat), axis=1, dtype=object
+            )
+
+        return neighbours
