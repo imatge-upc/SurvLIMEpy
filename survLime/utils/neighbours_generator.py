@@ -28,11 +28,13 @@ class NeighboursGenerator:
 
         if isinstance(training_data, pd.DataFrame):
             self.training_data = training_data.to_numpy()
+        elif isinstance(training_data, list):
+            self.training_data = np.array(training_data)
         else:
             self.training_data = training_data
 
         self.data_row = data_row
-        self.total_features = training_data.shape[1]
+        self.total_features = self.training_data.shape[1]
 
         if categorical_features is None:
             self.cat_features = []
