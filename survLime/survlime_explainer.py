@@ -1,5 +1,5 @@
 from functools import partial
-from typing import Callable, Tuple, Union
+from typing import Callable, Tuple, Union, List
 import numpy as np
 import cvxpy as cp
 import sklearn
@@ -8,6 +8,7 @@ import pandas as pd
 from sklearn.utils import check_random_state
 from sksurv.nonparametric import nelson_aalen_estimator
 from survLime.utils.optimization import OptFuncionMaker
+from survLime.utils.neighbours_generator import NeighboursGenerator
 
 
 class SurvLimeExplainer:
@@ -25,6 +26,7 @@ class SurvLimeExplainer:
         training_data: Union[np.ndarray, pd.DataFrame],
         target_data: Union[np.ndarray, pd.DataFrame],
         model_output_times: np.ndarray,
+        categorical_features: List[int] = None,
         H0: np.ndarray = None,
         kernel_width: float = None,
         kernel: Callable = None,
@@ -37,6 +39,7 @@ class SurvLimeExplainer:
         Args:
             training_data (Union[np.ndarray, pd.DataFrame]): data used to train the bb model
             target_data (Union[np.ndarray, pd.DataFrame]): target data used to train the bb model
+            categorical_features (List[int]): list of integeter indicating the categorical features
             model_output_times (np.ndarray): output times of the bb model
             H0 (np.ndarray): baseline cumulative hazard
             kernel_width (float): width of the kernel to be used for computing distances
@@ -50,8 +53,10 @@ class SurvLimeExplainer:
 
         self.random_state = check_random_state(random_state)
         self.sample_around_instance = sample_around_instance
+        self.training_data = training_data
         self.train_events = [y[0] for y in target_data]
         self.train_times = [y[1] for y in target_data]
+        self.categorical_features = categorical_features
         self.model_output_times = model_output_times
         if H0 is None:
             self.H0 = self.compute_nelson_aalen_estimator(
@@ -64,7 +69,7 @@ class SurvLimeExplainer:
         # self.validate_H0(self.H0)
 
         if kernel_width is None:
-            kernel_width = np.sqrt(training_data.shape[1]) * 0.75
+            kernel_width = np.sqrt(self.training_data.shape[1]) * 0.75
         kernel_width = float(kernel_width)
 
         if kernel is None:
@@ -81,7 +86,7 @@ class SurvLimeExplainer:
         # We won't scale the data with the .transform method anyway
         # I tried switching it to false and it gave the same mean and variance
         self.scaler = sklearn.preprocessing.StandardScaler(with_mean=False)
-        self.scaler.fit(training_data)
+        self.scaler.fit(self.training_data)
 
     @staticmethod
     def compute_nelson_aalen_estimator(
@@ -124,7 +129,15 @@ class SurvLimeExplainer:
             result (float): residual value of the convex problem.
         """
 
-        scaled_data = self.generate_neighbours(data_row, num_samples)
+        neighbours_generator = NeighboursGenerator(
+            training_data=self.training_data,
+            data_row=data_row,
+            categorical_features=self.categorical_features,
+            random_state=self.random_state,
+        )
+        scaled_data = neighbours_generator.generate_neighbours(
+            num_samples=num_samples, sample_around_instance=self.sample_around_instance
+        )
         distances = sklearn.metrics.pairwise_distances(
             scaled_data, scaled_data[0].reshape(1, -1), metric=distance_metric  # TO DO
         ).ravel()
@@ -220,28 +233,3 @@ class SurvLimeExplainer:
         prob = cp.Problem(objective)
         result = prob.solve(verbose=verbose)
         return b.value, result  # H_i_j_wc, weights, log_correction, scaled_data,
-
-    def generate_neighbours(self, data_row: np.ndarray, num_samples: int) -> np.ndarray:
-        """Generates a neighborhood around a prediction.
-
-        Args:
-            data_row (np.ndarray): data point to be explained of shape (1 x features)
-            num_samples (int): number of neighbours to generate
-
-        Returns:
-            data (np.ndarray): original data point and neighbours with shape (num_samples x features)
-        """
-        num_cols = data_row.shape[0]
-        data = np.zeros((num_samples, num_cols))
-        instance_sample = data_row
-        scale = self.scaler.scale_
-        mean = self.scaler.mean_
-        data = self.random_state.normal(0, 1, num_samples * num_cols).reshape(
-            num_samples, num_cols
-        )
-        if self.sample_around_instance:
-            data = data * scale + instance_sample
-        else:
-            data = data * scale + mean
-        data[0] = data_row.copy()
-        return data
