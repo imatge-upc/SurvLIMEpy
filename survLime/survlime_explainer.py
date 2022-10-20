@@ -54,6 +54,13 @@ class SurvLimeExplainer:
         self.random_state = check_random_state(random_state)
         self.sample_around_instance = sample_around_instance
         self.training_data = training_data
+        # if target_data is tuple convert to list with all the elements of the tuple in pairs
+        if isinstance(target_data, tuple):
+            target_data = list(zip(*target_data))
+        # if the first element of the first element of the list is boolean switch order of elements
+        if isinstance(target_data[0][0], bool):
+            target_data = [(t[1], t[0]) for t in target_data]
+
         self.train_events = [y[0] for y in target_data]
         self.train_times = [y[1] for y in target_data]
         self.categorical_features = categorical_features
@@ -183,16 +190,19 @@ class SurvLimeExplainer:
         epsilon = 0.00000001
         num_features = scaled_data.shape[1]
         m = len(set(self.train_times))
+        # make scaled_data from Double to Float
+        scaled_data = scaled_data.astype(np.float32)
         # To do: validate H_i_j_wc
         H_i_j_wc = predict_fn(scaled_data)
         times_to_fill = list(set(self.train_times))
         times_to_fill.sort()
-        H_i_j_wc = np.array(
-            [
-                np.interp(times_to_fill, self.model_output_times, H_i_j_wc[i])
-                for i in range(H_i_j_wc.shape[0])
-            ]
-        )
+        if times_to_fill != self.model_output_times:
+            H_i_j_wc = np.array(
+                [
+                    np.interp(times_to_fill, self.model_output_times, H_i_j_wc[i])
+                    for i in range(H_i_j_wc.shape[0])
+                ]
+            )
         log_correction = np.divide(H_i_j_wc, np.log(H_i_j_wc + epsilon))
 
         # Varible to look for
@@ -205,7 +215,7 @@ class SurvLimeExplainer:
         # Log of baseline cumulative hazard
         LnH0 = np.log(H0 + epsilon)
         # Compute the log correction
-        logs = np.reshape(log_correction, newshape=(num_samples, m))
+        logs = np.reshape(np.array(log_correction), newshape=(num_samples, m))
 
         # Distance weights
         w = np.reshape(weights, newshape=(num_samples, 1))
@@ -232,4 +242,5 @@ class SurvLimeExplainer:
         objective = cp.Minimize(funct)
         prob = cp.Problem(objective)
         result = prob.solve(verbose=verbose)
+
         return b.value, result  # H_i_j_wc, weights, log_correction, scaled_data,
