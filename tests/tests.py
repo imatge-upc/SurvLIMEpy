@@ -80,10 +80,10 @@ def test_categorical_features() -> None:
     n = 100
     random_state = check_random_state(2)
     data = {
-        'col1': random_state.normal(size=n),
-        'col2': random_state.normal(size=n),
-        'col3': random_state.choice(a=['a', 'b', 'c'], size=n),
-        'col4': random_state.choice(a=['d', 'e', 'f'], size=n),
+        "col1": random_state.normal(size=n),
+        "col2": random_state.normal(size=n),
+        "col3": random_state.choice(a=["a", "b", "c"], size=n),
+        "col4": random_state.choice(a=["d", "e", "f"], size=n),
     }
 
     df = pd.DataFrame(data)
@@ -98,7 +98,7 @@ def test_categorical_features() -> None:
 
     neighbours = neighbours_generator.generate_neighbours(100)
     neighbours_first = neighbours[0, 2:4]
-    expected_results = neighbours_first[0] == 'a' and neighbours_first[1] == 'f'
+    expected_results = neighbours_first[0] == "a" and neighbours_first[1] == "f"
     assert expected_results == True
 
 
