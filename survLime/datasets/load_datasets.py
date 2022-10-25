@@ -181,6 +181,7 @@ class RandomSurvivalData:
         prob_event: float,
         lambda_weibull: float,
         v_weibull: float,
+        time_cap: float = 2000,
         random_seed: int = None,
     ) -> None:
         """Init.
@@ -216,6 +217,7 @@ class RandomSurvivalData:
         self.lambda_weibull = lambda_weibull
         self.v_weibull = v_weibull
         self.random_state = np.random.default_rng(random_seed)
+        self.time_cap = time_cap
 
     def spherical_data(self, num_points: int) -> np.ndarray:
         """Generates random data in the p-dimensional sphere (covariates).
@@ -272,7 +274,10 @@ class RandomSurvivalData:
         den = lamba_val * np.exp(np.dot(X, b))
         # Use a Weibull distribution
         time_to_event = (num / den) ** (1 / v)
-        time_to_event = np.where(time_to_event > 2000, 2000, time_to_event)
+        if self.time_cap:
+            time_to_event = np.where(
+                time_to_event > self.time_cap, self.time_cap, time_to_event
+            )
         return time_to_event
 
     def random_event(self, num_points: int) -> np.array:
