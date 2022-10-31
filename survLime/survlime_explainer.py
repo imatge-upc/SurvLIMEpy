@@ -57,10 +57,9 @@ class SurvLimeExplainer:
         # if target_data is tuple convert to list with all the elements of the tuple in pairs
         if isinstance(target_data, tuple):
             target_data = list(zip(*target_data))
-        # if the first element of the first element of the list is boolean switch order of elements
-        if isinstance(target_data[0][0], bool):
+        # if the second element of the elements (Tuples) of the list is boolean switch order of elements
+        if isinstance(target_data[0][1], bool):
             target_data = [(t[1], t[0]) for t in target_data]
-
         self.train_events = [y[0] for y in target_data]
         self.train_times = [y[1] for y in target_data]
         self.categorical_features = categorical_features
@@ -187,6 +186,9 @@ class SurvLimeExplainer:
             b.values (np.ndarray): obtained weights from the convex problem.
             result (float): residual value of the convex problem.
         """
+
+
+
         epsilon = 0.00000001
         num_features = scaled_data.shape[1]
         m = len(set(self.train_times))
@@ -194,6 +196,9 @@ class SurvLimeExplainer:
         scaled_data = scaled_data.astype(np.float32)
         # To do: validate H_i_j_wc
         H_i_j_wc = predict_fn(scaled_data)
+        # if the second dimension of H_i_j_wc is bigger than the first, swap them
+        if H_i_j_wc.shape[1] > H_i_j_wc.shape[0]:
+            H_i_j_wc = H_i_j_wc.T
         times_to_fill = list(set(self.train_times))
         times_to_fill.sort()
         if times_to_fill != self.model_output_times:
