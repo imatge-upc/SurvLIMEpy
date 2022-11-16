@@ -1,6 +1,8 @@
 # SurvLIME
 
-<div style="text-align:center"><img src="logo.png" width="256" height="256"/></div>
+<p align="center">
+    <img src="logo.png" width="256" height="256">
+</p>
 
 
 SurvLIME (**Survival Local Interpretable Model-agnostic Explanation**) is a local interpretable algorithm for Survival Analysis models. This implements the method proposed in the [original paper](https://www.sciencedirect.com/science/article/abs/pii/S0950705120304044).
