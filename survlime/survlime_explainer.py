@@ -7,8 +7,8 @@ import sklearn.preprocessing
 import pandas as pd
 from sklearn.utils import check_random_state
 from sksurv.nonparametric import nelson_aalen_estimator
-from survLime.utils.optimization import OptFuncionMaker
-from survLime.utils.neighbours_generator import NeighboursGenerator
+from survlime.utils.optimization import OptFuncionMaker
+from survlime.utils.neighbours_generator import NeighboursGenerator
 
 
 class SurvLimeExplainer:
