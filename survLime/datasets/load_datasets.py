@@ -102,6 +102,7 @@ class Loader:
         x : pd.DataFrame with the unprocessed features
         y : np.ndarray of tuples with (status, time)
         """
+        self.df = self.df[self.df['ph.ecog'] != 3.0]
         self.df["status"] = [True if x == 1 else False for x in self.df["status"]]
         self.df["y"] = [
             (x, y) for x, y in zip(self.df["status"], self.df["time"])

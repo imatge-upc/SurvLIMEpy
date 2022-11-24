@@ -201,13 +201,22 @@ class SurvLimeExplainer:
             H_i_j_wc = H_i_j_wc.T
         times_to_fill = list(set(self.train_times))
         times_to_fill.sort()
-        if times_to_fill != self.model_output_times:
-            H_i_j_wc = np.array(
-                [
-                    np.interp(times_to_fill, self.model_output_times, H_i_j_wc[i])
-                    for i in range(H_i_j_wc.shape[0])
-                ]
-            )
+        try:
+            if (times_to_fill != self.model_output_times).any():
+                H_i_j_wc = np.array(
+                    [
+                        np.interp(times_to_fill, self.model_output_times, H_i_j_wc[i])
+                        for i in range(H_i_j_wc.shape[0])
+                    ]
+                )
+        except:
+            if times_to_fill != self.model_output_times:
+                H_i_j_wc = np.array(
+                    [
+                        np.interp(times_to_fill, self.model_output_times, H_i_j_wc[i])
+                        for i in range(H_i_j_wc.shape[0])
+                    ]
+                )
         log_correction = np.divide(H_i_j_wc, np.log(H_i_j_wc + epsilon))
 
         # Varible to look for
