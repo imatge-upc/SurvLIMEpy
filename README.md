@@ -19,7 +19,7 @@ pip install survlime
 ## How to use
 ```python
 from survlime import survlime_explainer
-from survlime.datasets.load_datasets import Loader
+from survlime.load_datasets import Loader
 from sksurv.linear_model import CoxPHSurvivalAnalysis
 from functools import partial
 
