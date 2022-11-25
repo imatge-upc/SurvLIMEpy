@@ -45,7 +45,8 @@ Please if you use this package, do not forget to cite us. citation data availabl
 
 ## References:
 
-Datasets -
+### Datasets
+
 PBC:
 Therneau, T.M., Grambsch, P.M. (2000). Expected Survival. In: Modeling Survival Data: Extending the Cox Model. Statistics for Biology and Health. Springer, New York, NY. https://doi.org/10.1007/978-1-4757-3294-8_10
 
