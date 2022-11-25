@@ -9,17 +9,12 @@ from sklearn.utils import check_random_state
 from sksurv.nonparametric import nelson_aalen_estimator
 from survlime.utils.optimization import OptFuncionMaker
 from survlime.utils.neighbours_generator import NeighboursGenerator
+from survlime.utils.predict import predict_wrapper
 
 
 class SurvLimeExplainer:
-    """To DO: change explanation
-    Explains predictions on tabular (i.e. matrix) data.
-    For numerical features, perturb them by sampling from a Normal(0,1) and
-    doing the inverse operation of mean-centering and scaling, according to the
-    means and stds in the training data. For categorical features, perturb by
-    sampling according to the training distribution, and making a binary
-    feature that is 1 when the value is the same as the instance being
-    explained."""
+    """
+    Look for the coefficient of a COX model."""
 
     def __init__(
         self,
@@ -78,13 +73,6 @@ class SurvLimeExplainer:
                 return np.sqrt(np.exp(-(d**2) / kernel_width**2))
 
         self.kernel_fn = partial(kernel, kernel_width=kernel_width)
-
-        # Though set has no role to play if training data stats are provided
-        # TO DO - Show Cris!
-        # Instantiate an Scalar that will become important
-        # take notice in the argument with_mean = False
-        # We won't scale the data with the .transform method anyway
-        # I tried switching it to false and it gave the same mean and variance
         self.scaler = sklearn.preprocessing.StandardScaler(with_mean=False)
         self.scaler.fit(self.training_data)
 
@@ -163,7 +151,7 @@ class SurvLimeExplainer:
         H0: np.ndarray,
         scaled_data: np.ndarray,
         norm: Union[float, str],
-        verbose: float,
+        verbose: bool,
     ) -> Tuple[np.ndarray, float]:
         """Solves the convex problem proposed in: https://arxiv.org/pdf/2003.08371.pdfF
 
@@ -174,7 +162,7 @@ class SurvLimeExplainer:
             H0 (np.ndarray): baseline cumulative hazard.
             scaled_data (np.ndarray): original data point and the computed neighbours.
             norm (Union[float, str]: number of the norm to be computed in the cvx problem.
-            verbose (float): activate verbosity of the cvxpy solver.
+            verbose (bool): activate verbosity of the cvxpy solver.
 
         Returns:
             b.values (np.ndarray): obtained weights from the convex problem.
@@ -182,16 +170,13 @@ class SurvLimeExplainer:
         """
         epsilon = 0.00000001
         num_features = scaled_data.shape[1]
-        m = len(set(self.train_times))
-        # To do: validate H_i_j_wc
-        H_i_j_wc = predict_fn(scaled_data)
-        times_to_fill = list(set(self.train_times))
-        times_to_fill.sort()
-        H_i_j_wc = np.array(
-            [
-                np.interp(times_to_fill, self.model_output_times, H_i_j_wc[i])
-                for i in range(H_i_j_wc.shape[0])
-            ]
+        unique_times_to_event = np.sort(np.unique(self.train_times))
+        m = unique_times_to_event.shape[0]
+        H_i_j_wc = predict_wrapper(
+            predict_fn=predict_fn,
+            data=scaled_data,
+            unique_times_to_event=unique_times_to_event,
+            model_output_times=self.model_output_times,
         )
         log_correction = np.divide(H_i_j_wc, np.log(H_i_j_wc + epsilon))
 
@@ -232,4 +217,4 @@ class SurvLimeExplainer:
         objective = cp.Minimize(funct)
         prob = cp.Problem(objective)
         result = prob.solve(verbose=verbose)
-        return b.value, result  # H_i_j_wc, weights, log_correction, scaled_data,
+        return b.value, result
