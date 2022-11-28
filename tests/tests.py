@@ -4,7 +4,7 @@ from sksurv.linear_model import CoxPHSurvivalAnalysis
 from sklearn.utils import check_random_state
 from survlime import survlime_explainer
 from survlime.utils.neighbours_generator import NeighboursGenerator
-from survlime.datasets.load_datasets import Loader
+from survlime.load_datasets import Loader
 from typing import List
 import pandas as pd
 

@@ -30,7 +30,6 @@ class SurvLimeExplainer:
     ) -> None:
 
         """Init function.
-
         Args:
             training_data (Union[np.ndarray, pd.DataFrame]): data used to train the bb model
             target_data (Union[np.ndarray, pd.DataFrame]): target data used to train the bb model
@@ -41,7 +40,6 @@ class SurvLimeExplainer:
             kernel (Callable): kernel function to be used for computing distances
             sample_around_instance (bool): whether we sample around instances or not
             random_state (int): number to be used for random seeds
-
         Returns:
             None
         """
@@ -103,7 +101,6 @@ class SurvLimeExplainer:
         verbose: bool = False,
     ) -> Tuple[np.ndarray, float]:
         """Generates explanations for a prediction.
-
         Args:
             data_row (np.ndarray): data point to be explained
             predict_fn (Callable): function that computes cumulative hazard
@@ -111,7 +108,6 @@ class SurvLimeExplainer:
             distance_metric (str): metric to be used for computing neighbours distance to the original point
             norm (Union[float, str]): number
             verbose (bool = False):
-
         Returns:
             b.values (np.ndarray): obtained weights from the convex problem.
             result (float): residual value of the convex problem.
@@ -154,7 +150,6 @@ class SurvLimeExplainer:
         verbose: bool,
     ) -> Tuple[np.ndarray, float]:
         """Solves the convex problem proposed in: https://arxiv.org/pdf/2003.08371.pdfF
-
         Args:
             predict_fn (Callable): function to compute the cumulative hazard.
             num_samples (int): number of neighbours.
