@@ -7,8 +7,8 @@ import sklearn.preprocessing
 import pandas as pd
 from sklearn.utils import check_random_state
 from sksurv.nonparametric import nelson_aalen_estimator
-from survLime.utils.optimization import OptFuncionMaker
-from survLime.utils.neighbours_generator import NeighboursGenerator
+from survlime.utils.optimization import OptFuncionMaker
+from survlime.utils.neighbours_generator import NeighboursGenerator
 
 
 class SurvLimeExplainer:
@@ -35,7 +35,6 @@ class SurvLimeExplainer:
     ) -> None:
 
         """Init function.
-
         Args:
             training_data (Union[np.ndarray, pd.DataFrame]): data used to train the bb model
             target_data (Union[np.ndarray, pd.DataFrame]): target data used to train the bb model
@@ -46,7 +45,6 @@ class SurvLimeExplainer:
             kernel (Callable): kernel function to be used for computing distances
             sample_around_instance (bool): whether we sample around instances or not
             random_state (int): number to be used for random seeds
-
         Returns:
             None
         """
@@ -54,12 +52,6 @@ class SurvLimeExplainer:
         self.random_state = check_random_state(random_state)
         self.sample_around_instance = sample_around_instance
         self.training_data = training_data
-        # if target_data is tuple convert to list with all the elements of the tuple in pairs
-        if isinstance(target_data, tuple):
-            target_data = list(zip(*target_data))
-        # if the second element of the elements (Tuples) of the list is boolean switch order of elements
-        if isinstance(target_data[0][1], bool):
-            target_data = [(t[1], t[0]) for t in target_data]
         self.train_events = [y[0] for y in target_data]
         self.train_times = [y[1] for y in target_data]
         self.categorical_features = categorical_features
@@ -121,7 +113,6 @@ class SurvLimeExplainer:
         verbose: bool = False,
     ) -> Tuple[np.ndarray, float]:
         """Generates explanations for a prediction.
-
         Args:
             data_row (np.ndarray): data point to be explained
             predict_fn (Callable): function that computes cumulative hazard
@@ -129,7 +120,6 @@ class SurvLimeExplainer:
             distance_metric (str): metric to be used for computing neighbours distance to the original point
             norm (Union[float, str]): number
             verbose (bool = False):
-
         Returns:
             b.values (np.ndarray): obtained weights from the convex problem.
             result (float): residual value of the convex problem.
@@ -172,7 +162,6 @@ class SurvLimeExplainer:
         verbose: float,
     ) -> Tuple[np.ndarray, float]:
         """Solves the convex problem proposed in: https://arxiv.org/pdf/2003.08371.pdfF
-
         Args:
             predict_fn (Callable): function to compute the cumulative hazard.
             num_samples (int): number of neighbours.
@@ -181,42 +170,23 @@ class SurvLimeExplainer:
             scaled_data (np.ndarray): original data point and the computed neighbours.
             norm (Union[float, str]: number of the norm to be computed in the cvx problem.
             verbose (float): activate verbosity of the cvxpy solver.
-
         Returns:
             b.values (np.ndarray): obtained weights from the convex problem.
             result (float): residual value of the convex problem.
         """
-
-
-
         epsilon = 0.00000001
         num_features = scaled_data.shape[1]
         m = len(set(self.train_times))
-        # make scaled_data from Double to Float
-        scaled_data = scaled_data.astype(np.float32)
         # To do: validate H_i_j_wc
         H_i_j_wc = predict_fn(scaled_data)
-        # if the second dimension of H_i_j_wc is bigger than the first, swap them
-        if H_i_j_wc.shape[1] > H_i_j_wc.shape[0]:
-            H_i_j_wc = H_i_j_wc.T
         times_to_fill = list(set(self.train_times))
         times_to_fill.sort()
-        try:
-            if (times_to_fill != self.model_output_times).any():
-                H_i_j_wc = np.array(
-                    [
-                        np.interp(times_to_fill, self.model_output_times, H_i_j_wc[i])
-                        for i in range(H_i_j_wc.shape[0])
-                    ]
-                )
-        except:
-            if times_to_fill != self.model_output_times:
-                H_i_j_wc = np.array(
-                    [
-                        np.interp(times_to_fill, self.model_output_times, H_i_j_wc[i])
-                        for i in range(H_i_j_wc.shape[0])
-                    ]
-                )
+        H_i_j_wc = np.array(
+            [
+                np.interp(times_to_fill, self.model_output_times, H_i_j_wc[i])
+                for i in range(H_i_j_wc.shape[0])
+            ]
+        )
         log_correction = np.divide(H_i_j_wc, np.log(H_i_j_wc + epsilon))
 
         # Varible to look for
@@ -229,7 +199,7 @@ class SurvLimeExplainer:
         # Log of baseline cumulative hazard
         LnH0 = np.log(H0 + epsilon)
         # Compute the log correction
-        logs = np.reshape(np.array(log_correction), newshape=(num_samples, m))
+        logs = np.reshape(log_correction, newshape=(num_samples, m))
 
         # Distance weights
         w = np.reshape(weights, newshape=(num_samples, 1))
@@ -256,5 +226,4 @@ class SurvLimeExplainer:
         objective = cp.Minimize(funct)
         prob = cp.Problem(objective)
         result = prob.solve(verbose=verbose)
-
         return b.value, result  # H_i_j_wc, weights, log_correction, scaled_data,
