@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 from typing import List, Dict, Union
+from sklearn.utils import check_random_state
 
 
 class NeighboursGenerator:
@@ -33,7 +34,14 @@ class NeighboursGenerator:
         else:
             self.training_data = training_data
 
-        self.data_row = data_row
+        if isinstance(data_row, pd.DataFrame):
+            self.data_row = data_row.to_numpy()
+            self.data_row = self.data_row[0]
+        elif isinstance(data_row, list):
+            self.data_row = np.array(training_data)
+        else:
+            self.data_row = data_row
+
         self.total_features = self.training_data.shape[1]
 
         if categorical_features is None:
@@ -101,12 +109,10 @@ class NeighboursGenerator:
             0, 1, size=(num_samples, self.total_cont_features)
         )
         neighbours *= sd_value
-
         if sample_around_instance:
             neighbours += self.data_row[self.cont_features]
         else:
             neighbours += mean_value
-
         return neighbours
 
     def generate_cat_neighbours(self, num_samples: int) -> np.ndarray:
