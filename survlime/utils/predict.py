@@ -1,4 +1,6 @@
 import numpy as np
+import pandas as pd
+import copy
 from sksurv.functions import StepFunction
 from typing import Callable
 
@@ -85,7 +87,12 @@ def predict_wrapper(
     num_individuals = data.shape[0]
     number_unique_times = unique_times_to_event.shape[0]
     # Predict
-    values = predict_fn(data)
+    values_raw = predict_fn(data)
+    # In case of a pd.DataFrame, force numpy
+    if isinstance(values_raw, pd.DataFrame):
+        values = values_raw.to_numpy()
+    else:
+        values = copy.deepcopy(values_raw)
     # If it is a numpy array
     if isinstance(values, np.ndarray):
         total_dim = values.ndim
