@@ -1,6 +1,7 @@
 from functools import partial
 from typing import Callable, Tuple, Union, List
 import numpy as np
+import pandas as pd
 import cvxpy as cp
 import sklearn
 import sklearn.preprocessing
@@ -73,6 +74,11 @@ class SurvLimeExplainer:
         self.kernel_fn = partial(kernel, kernel_width=kernel_width)
         self.scaler = sklearn.preprocessing.StandardScaler(with_mean=False)
         self.scaler.fit(self.training_data)
+        self.is_data_frame = isinstance(self.training_data, pd.DataFrame)
+        if self.is_data_frame:
+            self.column_names = self.training_data.columns
+        else:
+            self.column_names = None
 
     @staticmethod
     def compute_nelson_aalen_estimator(
@@ -167,9 +173,13 @@ class SurvLimeExplainer:
         num_features = scaled_data.shape[1]
         unique_times_to_event = np.sort(np.unique(self.train_times))
         m = unique_times_to_event.shape[0]
+        if self.column_names is not None:
+            scaled_data_format = pd.DataFrame(scaled_data, columns=self.column_names)
+        else:
+            scaled_data_format = np.copy(scaled_data)
         H_i_j_wc = predict_wrapper(
             predict_fn=predict_fn,
-            data=scaled_data,
+            data=scaled_data_format,
             unique_times_to_event=unique_times_to_event,
             model_output_times=self.model_output_times,
         )
