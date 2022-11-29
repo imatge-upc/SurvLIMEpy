@@ -7,7 +7,7 @@ from sklearn.preprocessing import StandardScaler
 from sksurv.util import Surv
 
 
-data_path = os.path.abspath(os.path.dirname(__file__))
+data_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), "datasets")
 veteran_path = os.path.join(data_path, "veteran.csv")
 udca_path = os.path.join(data_path, "udca_dataset.csv")
 pbc_path = os.path.join(data_path, "pbc_dataset.csv")
