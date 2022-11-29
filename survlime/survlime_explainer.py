@@ -123,7 +123,7 @@ class SurvLimeExplainer:
             num_samples=num_samples, sample_around_instance=self.sample_around_instance
         )
         distances = sklearn.metrics.pairwise_distances(
-            scaled_data, scaled_data[0].reshape(1, -1), metric=distance_metric  # TO DO
+            scaled_data, scaled_data[0].reshape(1, -1), metric=distance_metric
         ).ravel()
 
         weights = self.kernel_fn(distances)
