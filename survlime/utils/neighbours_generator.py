@@ -1,7 +1,6 @@
 import numpy as np
 import pandas as pd
 from typing import List, Dict, Union
-from sklearn.utils import check_random_state
 
 
 class NeighboursGenerator:
@@ -101,8 +100,8 @@ class NeighboursGenerator:
         training_data_cont = self.training_data[:, self.cont_features]
 
         # Estimate mean and variance for continuous features
-        mean_value = np.nanmean(training_data_cont, axis=0, dtype=np.float64)
-        sd_value = np.nanstd(training_data_cont, axis=0, dtype=np.float64)
+        mean_value = np.nanmean(training_data_cont, axis=0, dtype=np.float32)
+        sd_value = np.nanstd(training_data_cont, axis=0, dtype=np.float32)
 
         # Generate neighbours
         neighbours = self.random_state.normal(
