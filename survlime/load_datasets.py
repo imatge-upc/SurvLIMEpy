@@ -111,7 +111,7 @@ class Loader:
         times = [x[1] for x in y]
         x = self.df[self.feature_columns]
 
-        x.fillna(value=x.median(), inplace=True)
+        x = x.fillna(value=x.median(numeric_only=True))
 
         return x, events, times
 
