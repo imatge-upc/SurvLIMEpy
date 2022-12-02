@@ -196,8 +196,7 @@ class SurvLimeExplainer:
             verbose (bool): activate verbosity of the cvxpy solver
 
         Returns:
-            b.values (np.ndarray): obtained weights from the convex problem
-            result (float): residual value of the convex problem
+            cox_coefficients (np.ndarray): coefficients of a COX model
         """
         epsilon = 10 ** (-6)
         num_features = data.shape[1]
@@ -216,7 +215,9 @@ class SurvLimeExplainer:
         elif isinstance(data, pd.DataFrame):
             data_np = data.to_numpy()
         else:
-            raise NotImplemented("Unknown data type")
+            raise TypeError(
+                f"Unknown data type {type(data)} only np.ndarray or pd.DataFrame allowed"
+            )
 
         # Varible to look for
         b = cp.Variable((num_features, 1))
@@ -262,4 +263,5 @@ class SurvLimeExplainer:
         objective = cp.Minimize(funct)
         prob = cp.Problem(objective)
         result = prob.solve(verbose=verbose)
-        return b.value
+        cox_coefficients = b.value[:, 0]
+        return cox_coefficients

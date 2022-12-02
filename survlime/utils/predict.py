@@ -37,7 +37,7 @@ def validate_output_dimension(
     Args:
         matrix (np.array): matrix to validate.
         expected_num_rows (int): expected number of rows.
-        expected_num_rows (int): expected number of columns.
+        expected_num_cols (int): expected number of columns.
     """
     total_rows = matrix.shape[0]
     total_cols = matrix.shape[1]
@@ -123,7 +123,7 @@ def predict_wrapper(
             else:
                 raise NotImplemented("Unknown type of object")
     else:
-        raise NotImplemented("Unexpected number of dimensions")
+        raise TypeError("Unknown type of object")
 
     validate_output_dimension(
         matrix=predicted_values,
