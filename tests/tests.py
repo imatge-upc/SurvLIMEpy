@@ -126,5 +126,4 @@ def compute_weights(train: np.array, test: np.array, norm: float = 2) -> List[fl
         num_samples=num_pat,
         norm=norm,
     )
-    b = [x[0] for x in b]
     return b
