@@ -7,7 +7,7 @@ from sklearn.preprocessing import StandardScaler
 from sksurv.util import Surv
 
 
-data_path = os.path.abspath(os.path.dirname(__file__))
+data_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), "datasets")
 veteran_path = os.path.join(data_path, "veteran.csv")
 udca_path = os.path.join(data_path, "udca_dataset.csv")
 pbc_path = os.path.join(data_path, "pbc_dataset.csv")
@@ -111,7 +111,7 @@ class Loader:
         times = [x[1] for x in y]
         x = self.df[self.feature_columns]
 
-        x.fillna(value=x.median(), inplace=True)
+        x = x.fillna(value=x.median(numeric_only=True))
 
         return x, events, times
 
