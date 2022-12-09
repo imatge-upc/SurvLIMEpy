@@ -21,7 +21,7 @@ class SurvLimeExplainer:
     def __init__(
         self,
         training_features: Union[np.ndarray, pd.DataFrame],
-        traininig_events: List[Union[float, int]],
+        training_events: List[Union[float, int]],
         training_times: List[Union[bool, float, int]],
         model_output_times: np.ndarray,
         categorical_features: List[int] = None,
@@ -50,7 +50,7 @@ class SurvLimeExplainer:
         self.random_state = check_random_state(random_state)
         self.sample_around_instance = sample_around_instance
         self.training_data = training_features
-        self.train_events = traininig_events
+        self.train_events = training_events
         self.train_times = training_times
         self.categorical_features = categorical_features
         self.model_output_times = model_output_times
