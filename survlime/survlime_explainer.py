@@ -7,6 +7,8 @@ import cvxpy as cp
 import sklearn
 import sklearn.preprocessing
 import pandas as pd
+import seaborn as sns
+from matplotlib import pyplot as plt
 from sklearn.utils import check_random_state
 from sksurv.nonparametric import nelson_aalen_estimator
 from survlime.utils.optimization import OptFuncionMaker
@@ -54,6 +56,12 @@ class SurvLimeExplainer:
         self.train_times = training_times
         self.categorical_features = categorical_features
         self.model_output_times = model_output_times
+        self.computed_weights = []
+        if isinstance(self.training_data, pd.DataFrame):
+            self.feature_names = self.training_data.columns
+        else:
+            self.feature_names = [f"feature_{i}" for i in range(self.training_data.shape[1])]
+
         if H0 is None:
             self.H0 = self.compute_nelson_aalen_estimator(
                 self.train_events, self.train_times
@@ -141,6 +149,8 @@ class SurvLimeExplainer:
             b.values (np.ndarray): obtained weights from the convex problem.
             result (float): residual value of the convex problem.
         """
+        # To be used while plotting
+        self.data_point = data_row
 
         neighbours_generator = NeighboursGenerator(
             training_data=self.training_data,
@@ -264,4 +274,35 @@ class SurvLimeExplainer:
         prob = cp.Problem(objective)
         result = prob.solve(verbose=verbose)
         cox_coefficients = b.value[:, 0]
+
+        self.computed_weights = cox_coefficients
         return cox_coefficients
+
+    def plot_weights(self, figsize: Tuple[int, int] = (10, 10),
+                     feature_names: List[str] = None,
+                     scale_with_data_point: bool = False) -> None:
+        """Plot the weights of the computed model using 
+            seaborn as plotting library
+        Args:
+            figsize (Tuple[int, int]): size of the figure
+        """
+        if self.computed_weights is None:
+            raise ValueError("SurvLIME weights not computed yet")
+        
+        # Check
+        elif feature_names is not None:
+            feature_names = feature_names
+        else:
+            feature_names = self.feature_names
+
+        if scale_with_data_point:
+            weights = self.computed_weights * self.data_point
+        else:
+            weights = self.computed_weights
+
+        fig, ax = plt.subplots(figsize=figsize)
+        sns.barplot(y=weights, x=feature_names, ax=ax, palette="YlGn")
+        ax.set_title("SurvLIME weights for the given data point")
+        ax.set_xlabel("Weights")
+        ax.set_ylabel("Features")
+        plt.show()
