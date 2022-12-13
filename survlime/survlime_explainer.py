@@ -302,7 +302,24 @@ class SurvLimeExplainer:
 
         fig, ax = plt.subplots(figsize=figsize)
         sns.barplot(y=weights, x=feature_names, ax=ax, palette="YlGn")
+        # Add the value of the weights on top of the bars
+        for p in ax.patches:
+            height = p.get_height()
+            ax.text(
+                p.get_x() + p.get_width() / 2,
+                height + 0.01,
+                "{:1.2f}".format(height),
+                ha="center",
+            )
+
+            
         ax.set_title("SurvLIME weights for the given data point")
         ax.set_xlabel("Weights")
         ax.set_ylabel("Features")
         plt.show()
+
+        negative_features = [feature_names[i] for i in range(len(weights)) if weights[i] < 0]
+        positive_features = [feature_names[i] for i in range(len(weights)) if weights[i] > 0]
+
+        print(f"Features that increase survival: {negative_features}")
+        print(f"Features that decrease survival: {positive_features}")
