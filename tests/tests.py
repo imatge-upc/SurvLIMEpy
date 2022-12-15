@@ -113,7 +113,11 @@ def compute_weights(train: np.array, test: np.array, norm: float = 2) -> List[fl
     times_to_fill.sort()
 
     explainer = survlime_explainer.SurvLimeExplainer(
-        train[0], events, times, model_output_times=model.event_times_
+        train[0],
+        events,
+        times,
+        functional_norm=norm,
+        model_output_times=model.event_times_,
     )
 
     num_pat = 1000
@@ -124,6 +128,5 @@ def compute_weights(train: np.array, test: np.array, norm: float = 2) -> List[fl
         predict_chf,
         verbose=False,
         num_samples=num_pat,
-        norm=norm,
     )
     return b
