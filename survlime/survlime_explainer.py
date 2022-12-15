@@ -27,7 +27,9 @@ class SurvLimeExplainer:
         categorical_features: List[int] = None,
         H0: np.ndarray = None,
         kernel_width: float = None,
-        kernel: Callable = None,
+        kernel_distance: str = "euclidean",
+        kernel_fn: Callable = None,
+        functional_norm: Union[float, str] = 2,
         sample_around_instance: bool = False,
         random_state: int = None,
     ) -> None:
@@ -37,10 +39,12 @@ class SurvLimeExplainer:
             traininig_events (List[Union[float, int]]): training events indicator
             training_times (List[Union[bool, float, int]]): training times to event
             model_output_times (np.ndarray): output times of the bb model
-            categorical_features (List[int]): list of integeter indicating the categorical features
+            categorical_features (List[int]): list of integers indicating the categorical features
             H0 (np.ndarray): baseline cumulative hazard
             kernel_width (float): width of the kernel to be used for computing distances
-            kernel (Callable): kernel function to be used for computing distances
+            kernel_distance (str): metric to be used for computing neighbours distance to the original point
+            kernel_fn (Callable): kernel function to be used for computing distances
+            functional_norm (Union[float, str]): functional norm to calculate the distance between the Cox model and the black box model
             sample_around_instance (bool): whether we sample around instances or not
             random_state (int): number to be used for random seeds
         Returns:
@@ -68,12 +72,15 @@ class SurvLimeExplainer:
             kernel_width = np.sqrt(self.training_data.shape[1]) * 0.75
         kernel_width = float(kernel_width)
 
-        if kernel is None:
+        self.kernel_distance = kernel_distance
 
-            def kernel(d: np.ndarray, kernel_width: float) -> np.ndarray:
+        if kernel_fn is None:
+
+            def kernel_fn(d: np.ndarray, kernel_width: float) -> np.ndarray:
                 return np.sqrt(np.exp(-(d**2) / kernel_width**2))
 
-        self.kernel_fn = partial(kernel, kernel_width=kernel_width)
+        self.kernel_fn = partial(kernel_fn, kernel_width=kernel_width)
+        self.functional_norm = functional_norm
         self.scaler = sklearn.preprocessing.StandardScaler(with_mean=False)
         self.scaler.fit(self.training_data)
         self.is_data_frame = isinstance(self.training_data, pd.DataFrame)
@@ -124,8 +131,6 @@ class SurvLimeExplainer:
         predict_fn: Callable,
         type_fn: Literal["survival", "cumulative"] = "cumulative",
         num_samples: int = 5000,
-        distance_metric: str = "euclidean",
-        norm: Union[float, str] = 2,
         verbose: bool = False,
     ) -> Tuple[np.ndarray, float]:
         """Generates explanations for a prediction.
@@ -134,12 +139,9 @@ class SurvLimeExplainer:
             predict_fn (Callable): function that computes cumulative hazard
             type_fn (Literal["survival", "cumulative"]): whether predict_fn is the cumulative hazard funtion or survival function
             num_samples (int): number of neighbours to use
-            distance_metric (str): metric to be used for computing neighbours distance to the original point
-            norm (Union[float, str]): number
-            verbose (bool = False):
+            verbose (bool): whether or not to show cvxpy messages
         Returns:
-            b.values (np.ndarray): obtained weights from the convex problem.
-            result (float): residual value of the convex problem.
+            cox_values (np.ndarray): obtained weights from the convex problem
         """
 
         neighbours_generator = NeighboursGenerator(
@@ -156,22 +158,23 @@ class SurvLimeExplainer:
         scaled_data_transformed = self.transform_data(data=scaled_data)
 
         distances = sklearn.metrics.pairwise_distances(
-            scaled_data, scaled_data[0].reshape(1, -1), metric=distance_metric
+            scaled_data, scaled_data[0].reshape(1, -1), metric=self.kernel_distance
         ).ravel()
 
         weights = self.kernel_fn(distances)
 
         # Solution for the optimisation problems
-        return self.solve_opt_problem(
+        cox_values = self.solve_opt_problem(
             predict_fn=predict_fn,
             type_fn=type_fn,
             num_samples=num_samples,
             weights=weights,
             H0=self.H0,
             data=scaled_data_transformed,
-            norm=norm,
+            norm=self.functional_norm,
             verbose=verbose,
         )
+        return cox_values
 
     def solve_opt_problem(
         self,
@@ -192,7 +195,7 @@ class SurvLimeExplainer:
             weights (np.ndarray): distance weights computed for each data point
             H0 (np.ndarray): baseline cumulative hazard
             data (np.ndarray): original data point and the computed neighbours
-            norm (Union[float, str]: number of the norm to be computed in the cvx problem
+            norm (Union[float, str]: functional norm to calculate the distance between the Cox model and the black box model
             verbose (bool): activate verbosity of the cvxpy solver
 
         Returns:
