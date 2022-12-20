@@ -8,6 +8,7 @@ import sklearn
 import sklearn.preprocessing
 import pandas as pd
 import seaborn as sns
+from tqdm import tqdm
 from matplotlib import pyplot as plt
 from sklearn.utils import check_random_state
 from sksurv.nonparametric import nelson_aalen_estimator
@@ -372,3 +373,79 @@ class SurvLimeExplainer:
         if figure_path is not None:
             plt.savefig(figure_path, dpi=200)
         plt.show()
+
+    def montecarlo_explanation(
+        self,
+        data: Union[np.ndarray, pd.DataFrame],
+        predict_fn: Callable,
+        type_fn: Literal["survival", "cumulative"] = "cumulative",
+        num_samples: int = 5000,
+        num_repetitions: int = 10,
+    ) -> pd.DataFrame:
+        """Generates explanations for a prediction.
+        Args:
+            data_row (np.ndarray): data point to be explained
+            predict_fn (Callable): function that computes cumulative hazard
+            type_fn (Literal["survival", "cumulative"]): whether predict_fn is the cumulative hazard funtion or survival function
+            num_samples (int): number of neighbours to use
+            num_repetitions (int): number of times to repeat the explanation
+        Returns:
+            montecarlo_explanation (pd.DataFrame): dataframe with the montecarlo explanation
+        """
+
+        if isinstance(data, pd.DataFrame):
+            data = data.values
+        surv_volume = np.ndarray((num_repetitions, data.shape[0], data.shape[1]))
+
+        for rep in tqdm(range(num_repetitions)):
+            computed_weights = []
+            for i, data_row in enumerate(data):
+                # sample data point from the dataset
+                try:
+                    b = self.explain_instance(
+                        data_row,
+                        predict_fn,
+                        type_fn=type_fn,
+                        num_samples=num_samples,
+                        verbose=False,
+                    )
+                    computed_weights.append(b)
+                except:
+                    # create a np array of Null values
+                    computed_weights.append(
+                        np.full(shape=(len(self.feature_names),), fill_value=np.nan)
+                    )
+                    print(
+                        f"Data point {i} in repetition {rep} failed, continuing with next data point..."
+                    )
+
+            surv_volume[rep] = np.array(computed_weights)
+        montecarlo_weights = pd.DataFrame(
+            data=np.mean(surv_volume, axis=0), columns=self.feature_names
+        )
+        montecarlo_weights = montecarlo_weights.reindex(
+            montecarlo_weights.mean().sort_values(ascending=False).index, axis=1
+        )
+
+        fig, ax = plt.subplots(1, 1, figsize=(11, 7), sharey=True)
+        ax.tick_params(labelrotation=90)
+        p = sns.boxenplot(
+            x="variable",
+            y="value",
+            data=pd.melt(montecarlo_weights),
+            palette="RdBu",
+            ax=ax,
+        )
+        ax.tick_params(labelrotation=90)
+        p.set_xlabel("Features", fontsize=14, fontweight="bold")
+        p.set_ylabel("SurvLIME value", fontsize=14, fontweight="bold")
+        p.yaxis.grid(True)
+        p.xaxis.grid(True)
+
+        p.set_title(f"SurvLIME values", fontsize=16, fontweight="bold")
+
+        plt.xticks(fontsize=16, rotation=90)
+        plt.yticks(fontsize=14, rotation=0)
+        plt.show()
+
+        return montecarlo_weights
