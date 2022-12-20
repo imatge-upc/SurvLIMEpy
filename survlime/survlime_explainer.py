@@ -300,8 +300,35 @@ class SurvLimeExplainer:
         else:
             weights = self.computed_weights
 
-        fig, ax = plt.subplots(figsize=figsize)
-        sns.barplot(y=weights, x=feature_names, ax=ax, palette="YlGn")
+        _, ax = plt.subplots(figsize=figsize)
+
+        # sort weights in descending order
+        sorted_weights = np.sort(weights)[::-1]
+        # sort feature names so that they match the sorted weights
+        sorted_feature_names = [feature_names[i] for i in np.argsort(weights)[::-1]]
+
+        # divide the sorted weights and sorted feature names into positive and negative
+        pos_weights = [w for w in sorted_weights if w > 0]
+        pos_feature_names = [f for f, w in zip(sorted_feature_names, sorted_weights) if w > 0]
+        neg_weights = [w for w in sorted_weights if w < 0]
+        neg_feature_names = [f for f, w in zip(sorted_feature_names, sorted_weights) if w < 0]
+        
+        for label, weights_separated, palette in zip([pos_feature_names, neg_feature_names],
+                                           [pos_weights, neg_weights], ["Reds", "Blues"]):
+            # not stacked bar chart
+            # stacked bar chart
+            data = pd.DataFrame({'features': label, 'weights': weights_separated})
+            ax.bar('features', 'weights',
+                    data=data, color=sns.color_palette(palette, n_colors=len(label)),
+                    label=label)
+
+        ax.set_xlabel("Feature", fontsize=16)
+        ax.set_ylabel("Weight", fontsize=16)
+        ax.set_title("SurvLIME weights", fontsize=16)
+
+        ax.tick_params(axis="y", labelsize=14)
+        ax.tick_params(axis="x", labelsize=14)
+
         # Add the value of the weights on top of the bars
         for p in ax.patches:
             height = p.get_height()
@@ -311,10 +338,4 @@ class SurvLimeExplainer:
                 "{:1.2f}".format(height),
                 ha="center",
             )
-
-            
-        ax.set_title("SurvLIME weights for the given data point")
-        ax.set_xlabel("Weights")
-        ax.set_ylabel("Features")
         plt.show()
-
