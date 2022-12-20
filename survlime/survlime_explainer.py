@@ -392,7 +392,7 @@ class SurvLimeExplainer:
         Returns:
             montecarlo_explanation (pd.DataFrame): dataframe with the montecarlo explanation
         """
-
+        sns.set()
         if isinstance(data, pd.DataFrame):
             data = data.values
         surv_volume = np.ndarray((num_repetitions, data.shape[0], data.shape[1]))
