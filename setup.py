@@ -5,7 +5,7 @@ setup(
     version="0.1.8",
     description="Survival adaptation of the LIME algorithm",
     packages=find_packages(),
-    install_requires=["numpy", "cvxpy", "scikit-survival", "scikit-learn", "pandas","tqdm","seaborn"],
+    install_requires=["numpy", "cvxpy", "scikit-survival", "scikit-learn", "pandas","tqdm","seaborn","matplotlib"],
     extras_require={"dev": ["pytest"]},
     test_suite="tests",
     url='https://github.com/imatge-upc/SurvLIME',
