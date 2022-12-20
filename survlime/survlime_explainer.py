@@ -64,7 +64,9 @@ class SurvLimeExplainer:
         if isinstance(self.training_data, pd.DataFrame):
             self.feature_names = self.training_data.columns
         else:
-            self.feature_names = [f"feature_{i}" for i in range(self.training_data.shape[1])]
+            self.feature_names = [
+                f"feature_{i}" for i in range(self.training_data.shape[1])
+            ]
 
         if H0 is None:
             self.H0 = self.compute_nelson_aalen_estimator(
@@ -281,11 +283,14 @@ class SurvLimeExplainer:
         self.computed_weights = cox_coefficients
         return cox_coefficients
 
-    def plot_weights(self, figsize: Tuple[int, int] = (10, 10),
-                     feature_names: List[str] = None,
-                     scale_with_data_point: bool = False,
-                     figure_path: str = None) -> None:
-        """Plot the weights of the computed model using 
+    def plot_weights(
+        self,
+        figsize: Tuple[int, int] = (10, 10),
+        feature_names: List[str] = None,
+        scale_with_data_point: bool = False,
+        figure_path: str = None,
+    ) -> None:
+        """Plot the weights of the computed model using
             seaborn as plotting library
         Args:
             figsize (Tuple[int, int]): size of the figure
@@ -297,8 +302,10 @@ class SurvLimeExplainer:
             None
         """
         if self.computed_weights is None:
-            raise ValueError("SurvLIME weights not computed yet. Call explain_instance first to use this function")
-        
+            raise ValueError(
+                "SurvLIME weights not computed yet. Call explain_instance first to use this function"
+            )
+
         elif feature_names is not None:
             feature_names = feature_names
         else:
@@ -318,18 +325,29 @@ class SurvLimeExplainer:
 
         # divide the sorted weights and sorted feature names into positive and negative
         pos_weights = [w for w in sorted_weights if w > 0]
-        pos_feature_names = [f for f, w in zip(sorted_feature_names, sorted_weights) if w > 0]
+        pos_feature_names = [
+            f for f, w in zip(sorted_feature_names, sorted_weights) if w > 0
+        ]
         neg_weights = [w for w in sorted_weights if w < 0]
-        neg_feature_names = [f for f, w in zip(sorted_feature_names, sorted_weights) if w < 0]
-        
-        for label, weights_separated, palette in zip([pos_feature_names, neg_feature_names],
-                                           [pos_weights, neg_weights], ["Reds", "Blues"]):
+        neg_feature_names = [
+            f for f, w in zip(sorted_feature_names, sorted_weights) if w < 0
+        ]
+
+        for label, weights_separated, palette in zip(
+            [pos_feature_names, neg_feature_names],
+            [pos_weights, neg_weights],
+            ["Reds", "Blues"],
+        ):
             # not stacked bar chart
             # stacked bar chart
-            data = pd.DataFrame({'features': label, 'weights': weights_separated})
-            ax.bar('features', 'weights',
-                    data=data, color=sns.color_palette(palette, n_colors=len(label)),
-                    label=label)
+            data = pd.DataFrame({"features": label, "weights": weights_separated})
+            ax.bar(
+                "features",
+                "weights",
+                data=data,
+                color=sns.color_palette(palette, n_colors=len(label)),
+                label=label,
+            )
 
         ax.set_xlabel("Feature", fontsize=16)
         ax.set_ylabel("Weight", fontsize=16)
@@ -354,4 +372,3 @@ class SurvLimeExplainer:
         if figure_path is not None:
             plt.savefig(figure_path, dpi=200)
         plt.show()
-
