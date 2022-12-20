@@ -8,6 +8,7 @@ import sklearn
 import sklearn.preprocessing
 import pandas as pd
 import seaborn as sns
+from tqdm import tqdm
 from matplotlib import pyplot as plt
 from sklearn.utils import check_random_state
 from sksurv.nonparametric import nelson_aalen_estimator
@@ -60,7 +61,9 @@ class SurvLimeExplainer:
         if isinstance(self.training_data, pd.DataFrame):
             self.feature_names = self.training_data.columns
         else:
-            self.feature_names = [f"feature_{i}" for i in range(self.training_data.shape[1])]
+            self.feature_names = [
+                f"feature_{i}" for i in range(self.training_data.shape[1])
+            ]
 
         if H0 is None:
             self.H0 = self.compute_nelson_aalen_estimator(
@@ -278,11 +281,14 @@ class SurvLimeExplainer:
         self.computed_weights = cox_coefficients
         return cox_coefficients
 
-    def plot_weights(self, figsize: Tuple[int, int] = (10, 10),
-                     feature_names: List[str] = None,
-                     scale_with_data_point: bool = False,
-                     figure_path: str = None) -> None:
-        """Plot the weights of the computed model using 
+    def plot_weights(
+        self,
+        figsize: Tuple[int, int] = (10, 10),
+        feature_names: List[str] = None,
+        scale_with_data_point: bool = False,
+        figure_path: str = None,
+    ) -> None:
+        """Plot the weights of the computed model using
             seaborn as plotting library
         Args:
             figsize (Tuple[int, int]): size of the figure
@@ -294,8 +300,10 @@ class SurvLimeExplainer:
             None
         """
         if self.computed_weights is None:
-            raise ValueError("SurvLIME weights not computed yet. Call explain_instance first to use this function")
-        
+            raise ValueError(
+                "SurvLIME weights not computed yet. Call explain_instance first to use this function"
+            )
+
         elif feature_names is not None:
             feature_names = feature_names
         else:
@@ -315,18 +323,29 @@ class SurvLimeExplainer:
 
         # divide the sorted weights and sorted feature names into positive and negative
         pos_weights = [w for w in sorted_weights if w > 0]
-        pos_feature_names = [f for f, w in zip(sorted_feature_names, sorted_weights) if w > 0]
+        pos_feature_names = [
+            f for f, w in zip(sorted_feature_names, sorted_weights) if w > 0
+        ]
         neg_weights = [w for w in sorted_weights if w < 0]
-        neg_feature_names = [f for f, w in zip(sorted_feature_names, sorted_weights) if w < 0]
-        
-        for label, weights_separated, palette in zip([pos_feature_names, neg_feature_names],
-                                           [pos_weights, neg_weights], ["Reds", "Blues"]):
+        neg_feature_names = [
+            f for f, w in zip(sorted_feature_names, sorted_weights) if w < 0
+        ]
+
+        for label, weights_separated, palette in zip(
+            [pos_feature_names, neg_feature_names],
+            [pos_weights, neg_weights],
+            ["Reds", "Blues"],
+        ):
             # not stacked bar chart
             # stacked bar chart
-            data = pd.DataFrame({'features': label, 'weights': weights_separated})
-            ax.bar('features', 'weights',
-                    data=data, color=sns.color_palette(palette, n_colors=len(label)),
-                    label=label)
+            data = pd.DataFrame({"features": label, "weights": weights_separated})
+            ax.bar(
+                "features",
+                "weights",
+                data=data,
+                color=sns.color_palette(palette, n_colors=len(label)),
+                label=label,
+            )
 
         ax.set_xlabel("Feature", fontsize=16)
         ax.set_ylabel("Weight", fontsize=16)
@@ -354,24 +373,76 @@ class SurvLimeExplainer:
 
     def montecarlo_explanation(
         self,
-        data_row: np.ndarray,
+        data: Union[np.ndarray, pd.DataFrame],
         predict_fn: Callable,
         type_fn: Literal["survival", "cumulative"] = "cumulative",
         num_samples: int = 5000,
-        distance_metric: str = "euclidean",
-        norm: Union[float, str] = 2,
-        num_repetitions
-    ) -> Tuple[np.ndarray, float]:
+        num_repetitions: int = 3,
+    ) -> pd.DataFrame:
         """Generates explanations for a prediction.
         Args:
             data_row (np.ndarray): data point to be explained
             predict_fn (Callable): function that computes cumulative hazard
             type_fn (Literal["survival", "cumulative"]): whether predict_fn is the cumulative hazard funtion or survival function
             num_samples (int): number of neighbours to use
-            distance_metric (str): metric to be used for computing neighbours distance to the original point
-            norm (Union[float, str]): number
-            verbose (bool = False):
+            num_repetitions (int): number of times to repeat the explanation
         Returns:
-            b.values (np.ndarray): obtained weights from the convex problem.
-            result (float): residual value of the convex problem.
+            montecarlo_explanation (pd.DataFrame): dataframe with the montecarlo explanation
         """
+
+        if isinstance(data, pd.DataFrame):
+            data = data.values
+        surv_volume = np.ndarray((num_repetitions, data.shape[0], data.shape[1]))
+
+        for rep in tqdm(range(num_repetitions)):
+            computed_weights = []
+            for i, data_row in enumerate(data):
+                # sample data point from the dataset
+                try:
+                    b = self.explain_instance(
+                        data_row,
+                        predict_fn,
+                        type_fn=type_fn,
+                        num_samples=num_samples,
+                        verbose=False,
+                    )
+                    computed_weights.append(b)
+                except:
+                    # create a np array of Null values
+                    computed_weights.append(
+                        np.full(shape=(len(self.feature_names),), fill_value=np.nan)
+                    )
+                    print(
+                        f"Data point {i} in repetition {rep} failed, continuing with next data point..."
+                    )
+
+            surv_volume[rep] = np.array(computed_weights)
+        montecarlo_weights = pd.DataFrame(
+            data=np.mean(surv_volume, axis=0), columns=self.feature_names
+        )
+        montecarlo_weights = montecarlo_weights.reindex(
+            montecarlo_weights.mean().sort_values(ascending=False).index, axis=1
+        )
+
+        fig, ax = plt.subplots(1, 1, figsize=(11, 7), sharey=True)
+        ax.tick_params(labelrotation=90)
+        p = sns.boxenplot(
+            x="variable",
+            y="value",
+            data=pd.melt(montecarlo_weights),
+            palette="RdBu",
+            ax=ax,
+        )
+        ax.tick_params(labelrotation=90)
+        p.set_xlabel("Features", fontsize=14, fontweight="bold")
+        p.set_ylabel("SurvLIME value", fontsize=14, fontweight="bold")
+        p.yaxis.grid(True)
+        p.xaxis.grid(True)
+
+        p.set_title(f"SurvLIME values", fontsize=16, fontweight="bold")
+
+        plt.xticks(fontsize=16, rotation=90)
+        plt.yticks(fontsize=14, rotation=0)
+        plt.show()
+
+        return montecarlo_weights
