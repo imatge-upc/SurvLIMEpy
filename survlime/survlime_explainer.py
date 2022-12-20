@@ -7,6 +7,8 @@ import cvxpy as cp
 import sklearn
 import sklearn.preprocessing
 import pandas as pd
+import seaborn as sns
+from matplotlib import pyplot as plt
 from sklearn.utils import check_random_state
 from sksurv.nonparametric import nelson_aalen_estimator
 from survlime.utils.optimization import OptFuncionMaker
@@ -58,6 +60,12 @@ class SurvLimeExplainer:
         self.train_times = training_times
         self.categorical_features = categorical_features
         self.model_output_times = model_output_times
+        self.computed_weights = []
+        if isinstance(self.training_data, pd.DataFrame):
+            self.feature_names = self.training_data.columns
+        else:
+            self.feature_names = [f"feature_{i}" for i in range(self.training_data.shape[1])]
+
         if H0 is None:
             self.H0 = self.compute_nelson_aalen_estimator(
                 self.train_events, self.train_times
@@ -143,6 +151,8 @@ class SurvLimeExplainer:
         Returns:
             cox_values (np.ndarray): obtained weights from the convex problem
         """
+        # To be used while plotting
+        self.data_point = data_row
 
         neighbours_generator = NeighboursGenerator(
             training_data=self.training_data,
@@ -267,4 +277,81 @@ class SurvLimeExplainer:
         prob = cp.Problem(objective)
         result = prob.solve(verbose=verbose)
         cox_coefficients = b.value[:, 0]
+
+        self.computed_weights = cox_coefficients
         return cox_coefficients
+
+    def plot_weights(self, figsize: Tuple[int, int] = (10, 10),
+                     feature_names: List[str] = None,
+                     scale_with_data_point: bool = False,
+                     figure_path: str = None) -> None:
+        """Plot the weights of the computed model using 
+            seaborn as plotting library
+        Args:
+            figsize (Tuple[int, int]): size of the figure
+            feature_names (List[str]): names of the features
+            scale_with_data_point (bool): whether to scale the weights with the data point
+            figure_path (str): path to save the figure
+
+        Returns:
+            None
+        """
+        if self.computed_weights is None:
+            raise ValueError("SurvLIME weights not computed yet. Call explain_instance first to use this function")
+        
+        elif feature_names is not None:
+            feature_names = feature_names
+        else:
+            feature_names = self.feature_names
+
+        if scale_with_data_point:
+            weights = self.computed_weights * self.data_point
+        else:
+            weights = self.computed_weights
+
+        _, ax = plt.subplots(figsize=figsize)
+
+        # sort weights in descending order
+        sorted_weights = np.sort(weights)[::-1]
+        # sort feature names so that they match the sorted weights
+        sorted_feature_names = [feature_names[i] for i in np.argsort(weights)[::-1]]
+
+        # divide the sorted weights and sorted feature names into positive and negative
+        pos_weights = [w for w in sorted_weights if w > 0]
+        pos_feature_names = [f for f, w in zip(sorted_feature_names, sorted_weights) if w > 0]
+        neg_weights = [w for w in sorted_weights if w < 0]
+        neg_feature_names = [f for f, w in zip(sorted_feature_names, sorted_weights) if w < 0]
+        
+        for label, weights_separated, palette in zip([pos_feature_names, neg_feature_names],
+                                           [pos_weights, neg_weights], ["Reds", "Blues"]):
+            # not stacked bar chart
+            # stacked bar chart
+            data = pd.DataFrame({'features': label, 'weights': weights_separated})
+            ax.bar('features', 'weights',
+                    data=data, color=sns.color_palette(palette, n_colors=len(label)),
+                    label=label)
+
+        ax.set_xlabel("Feature", fontsize=16)
+        ax.set_ylabel("Weight", fontsize=16)
+        ax.set_title("SurvLIME weights", fontsize=16)
+
+        ax.tick_params(axis="y", labelsize=14)
+        ax.tick_params(axis="x", labelsize=14)
+
+        # Add the value of the weights on top of the bars
+        for p in ax.patches:
+            height = p.get_height()
+            ax.text(
+                p.get_x() + p.get_width() / 2,
+                height + 0.01,
+                "{:1.2f}".format(height),
+                ha="center",
+            )
+
+        ax.spines["top"].set_visible(False)
+        ax.spines["right"].set_visible(False)
+
+        if figure_path is not None:
+            plt.savefig(figure_path, dpi=200)
+        plt.show()
+
