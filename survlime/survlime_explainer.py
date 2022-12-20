@@ -318,8 +318,3 @@ class SurvLimeExplainer:
         ax.set_ylabel("Features")
         plt.show()
 
-        negative_features = [feature_names[i] for i in range(len(weights)) if weights[i] < 0]
-        positive_features = [feature_names[i] for i in range(len(weights)) if weights[i] > 0]
-
-        print(f"Features that increase survival: {negative_features}")
-        print(f"Features that decrease survival: {positive_features}")
