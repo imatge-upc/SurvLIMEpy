@@ -280,16 +280,22 @@ class SurvLimeExplainer:
 
     def plot_weights(self, figsize: Tuple[int, int] = (10, 10),
                      feature_names: List[str] = None,
-                     scale_with_data_point: bool = False) -> None:
+                     scale_with_data_point: bool = False,
+                     figure_path: str = None) -> None:
         """Plot the weights of the computed model using 
             seaborn as plotting library
         Args:
             figsize (Tuple[int, int]): size of the figure
+            feature_names (List[str]): names of the features
+            scale_with_data_point (bool): whether to scale the weights with the data point
+            figure_path (str): path to save the figure
+
+        Returns:
+            None
         """
         if self.computed_weights is None:
-            raise ValueError("SurvLIME weights not computed yet")
+            raise ValueError("SurvLIME weights not computed yet. Call explain_instance first to use this function")
         
-        # Check
         elif feature_names is not None:
             feature_names = feature_names
         else:
@@ -338,4 +344,11 @@ class SurvLimeExplainer:
                 "{:1.2f}".format(height),
                 ha="center",
             )
+
+        ax.spines["top"].set_visible(False)
+        ax.spines["right"].set_visible(False)
+
+        if figure_path is not None:
+            plt.savefig(figure_path, dpi=200)
         plt.show()
+
