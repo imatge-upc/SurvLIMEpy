@@ -61,7 +61,7 @@ class SurvLimeExplainer:
         self.train_times = training_times
         self.categorical_features = categorical_features
         self.model_output_times = model_output_times
-        self.computed_weights = []
+        self.computed_weights = None
         if isinstance(self.training_data, pd.DataFrame):
             self.feature_names = self.training_data.columns
         else:
@@ -291,17 +291,17 @@ class SurvLimeExplainer:
         scale_with_data_point: bool = False,
         figure_path: str = None,
     ) -> None:
-        """Plot the weights of the computed model using
-            seaborn as plotting library
+        # Create docstring of the function
+        """Plots the weights of the computed COX model
         Args:
             figsize (Tuple[int, int]): size of the figure
             feature_names (List[str]): names of the features
             scale_with_data_point (bool): whether to scale the weights with the data point
             figure_path (str): path to save the figure
-
         Returns:
             None
         """
+
         if self.computed_weights is None:
             raise ValueError(
                 "SurvLIME weights not computed yet. Call explain_instance first to use this function"
@@ -318,6 +318,7 @@ class SurvLimeExplainer:
             weights = self.computed_weights
 
         _, ax = plt.subplots(figsize=figsize)
+        
 
         # sort weights in descending order
         sorted_weights = np.sort(weights)[::-1]
