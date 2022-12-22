@@ -318,7 +318,6 @@ class SurvLimeExplainer:
             weights = self.computed_weights
 
         _, ax = plt.subplots(figsize=figsize)
-        
 
         # sort weights in descending order
         sorted_weights = np.sort(weights)[::-1]
