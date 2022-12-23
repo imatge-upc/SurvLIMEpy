@@ -337,10 +337,8 @@ class SurvLimeExplainer:
         for label, weights_separated, palette in zip(
             [pos_feature_names, neg_feature_names],
             [pos_weights, neg_weights],
-            ["Reds", "Blues"],
+            ["Reds_r", "Blues"],
         ):
-            # not stacked bar chart
-            # stacked bar chart
             data = pd.DataFrame({"features": label, "weights": weights_separated})
             ax.bar(
                 "features",
@@ -354,24 +352,14 @@ class SurvLimeExplainer:
         ax.set_ylabel("Weight", fontsize=16)
         ax.set_title("SurvLIME weights", fontsize=16)
 
+        ax.tick_params(axis="x", labelsize=14, rotation=90)
         ax.tick_params(axis="y", labelsize=14)
-        ax.tick_params(axis="x", labelsize=14)
-
-        # Add the value of the weights on top of the bars
-        for p in ax.patches:
-            height = p.get_height()
-            ax.text(
-                p.get_x() + p.get_width() / 2,
-                height + 0.01,
-                "{:1.2f}".format(height),
-                ha="center",
-            )
 
         ax.spines["top"].set_visible(False)
         ax.spines["right"].set_visible(False)
 
         if figure_path is not None:
-            plt.savefig(figure_path, dpi=200)
+            plt.savefig(figure_path, dpi=200, bbox_inches="tight")
         plt.show()
 
     def montecarlo_explanation(
