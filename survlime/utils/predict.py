@@ -41,9 +41,15 @@ def validate_output_dimension(
     """
     total_rows = matrix.shape[0]
     total_cols = matrix.shape[1]
-    if total_rows != expected_num_rows or total_cols != expected_num_cols:
+
+    if total_rows != expected_num_rows:
         raise ValueError(
-            "Predicted function does not provide a prediction for all the individuals"
+            f"The predicted function returns {total_rows} rows while expecting {expected_num_rows} rows"
+        )
+
+    if total_cols != expected_num_cols:
+        raise ValueError(
+            f"The predicted function returns {total_cols} columns while expecting {expected_num_cols} columns"
         )
     else:
         return None
