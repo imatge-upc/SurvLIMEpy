@@ -2,10 +2,10 @@ import numpy as np
 from functools import partial
 from sksurv.linear_model import CoxPHSurvivalAnalysis
 from sklearn.utils import check_random_state
-from survlime import survlime_explainer
+from survlime import SurvLimeExplainer
 from survlime.utils.neighbours_generator import NeighboursGenerator
 from survlime.load_datasets import Loader
-from typing import List, Callable
+from typing import List
 import pandas as pd
 import pytest
 
@@ -120,7 +120,7 @@ def compute_weights(
     times_to_fill = list(set([x[1] for x in train[1]]))
     times_to_fill.sort()
 
-    explainer = survlime_explainer.SurvLimeExplainer(
+    explainer = SurvLimeExplainer(
         train[0],
         events,
         times,
