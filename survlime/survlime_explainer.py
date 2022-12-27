@@ -141,7 +141,7 @@ class SurvLimeExplainer:
         data_row: np.ndarray,
         predict_fn: Callable,
         type_fn: Literal["survival", "cumulative"] = "cumulative",
-        num_samples: int = 5000,
+        num_samples: int = 1000,
         verbose: bool = False,
     ) -> Tuple[np.ndarray, float]:
         """Generates explanations for a prediction.
@@ -367,7 +367,7 @@ class SurvLimeExplainer:
         data: Union[np.ndarray, pd.DataFrame],
         predict_fn: Callable,
         type_fn: Literal["survival", "cumulative"] = "cumulative",
-        num_samples: int = 5000,
+        num_samples: int = 1000,
         num_repetitions: int = 10,
     ) -> pd.DataFrame:
         """Generates explanations for a prediction.
