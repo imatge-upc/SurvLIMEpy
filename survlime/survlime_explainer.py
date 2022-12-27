@@ -138,7 +138,7 @@ class SurvLimeExplainer:
 
     def explain_instance(
         self,
-        data_row: np.ndarray,
+        data_row: Union[List, np.ndarray, pd.Series],
         predict_fn: Callable,
         type_fn: Literal["survival", "cumulative"] = "cumulative",
         num_samples: int = 1000,
@@ -146,7 +146,7 @@ class SurvLimeExplainer:
     ) -> Tuple[np.ndarray, float]:
         """Generates explanations for a prediction.
         Args:
-            data_row (np.ndarray): data point to be explained
+            data_row (Union[List, np.ndarray, pd.Series]): data point to be explained
             predict_fn (Callable): function that computes cumulative hazard
             type_fn (Literal["survival", "cumulative"]): whether predict_fn is the cumulative hazard funtion or survival function
             num_samples (int): number of neighbours to use
@@ -155,11 +155,23 @@ class SurvLimeExplainer:
             cox_values (np.ndarray): obtained weights from the convex problem
         """
         # To be used while plotting
-        self.data_point = data_row
+        if isinstance(data_row, list):
+            self.data_point = np.array(data_row).reshape(1, -1)
+        elif isinstance(data_row, np.ndarray):
+            if len(data_row.shape[0]) == 1:
+                self.data_point = np.reshape(data_row, newshape=(1, -1))
+            elif len(data_row.shape[0]) == 2:
+                self.data_point = data_row
+            else:
+                raise ValueError("data_point must not have more than 2 dimensions")
+        elif isinstance(data_row, pd.Series):
+            self.data_point = data_row.to_numpy().reshape(1, -1)
+        else:
+            raise ValueError("data_point must be either a list or a numpy array")
 
         neighbours_generator = NeighboursGenerator(
             training_data=self.training_data,
-            data_row=data_row,
+            data_row=self.data_point,
             categorical_features=self.categorical_features,
             random_state=self.random_state,
         )
@@ -171,7 +183,7 @@ class SurvLimeExplainer:
         scaled_data_transformed = self.transform_data(data=scaled_data)
 
         distances = sklearn.metrics.pairwise_distances(
-            scaled_data, scaled_data[0].reshape(1, -1), metric=self.kernel_distance
+            scaled_data, self.data_point, metric=self.kernel_distance
         ).ravel()
 
         weights = self.kernel_fn(distances)
@@ -372,7 +384,7 @@ class SurvLimeExplainer:
     ) -> pd.DataFrame:
         """Generates explanations for a prediction.
         Args:
-            data_row (np.ndarray): data point to be explained
+            data (np.ndarray): data points to be explained
             predict_fn (Callable): function that computes cumulative hazard
             type_fn (Literal["survival", "cumulative"]): whether predict_fn is the cumulative hazard funtion or survival function
             num_samples (int): number of neighbours to use
