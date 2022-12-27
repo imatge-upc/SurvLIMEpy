@@ -18,10 +18,9 @@ pip install survlime
 
 ## How to use
 ```python
-from survlime import survlime_explainer
+from survlime import SurvLimeExplainer
 from survlime.load_datasets import Loader
 from sksurv.linear_model import CoxPHSurvivalAnalysis
-from functools import partial
 
 # Load UDCA dataset
 loader = Loader(dataset_name='udca')
@@ -33,11 +32,10 @@ model = CoxPHSurvivalAnalysis()
 model.fit(train[0], train[1])
 
 # Use SurvLIME explainer
-explainer = survlime_explainer.SurvLimeExplainer(train[0], train[1], model_output_times=model.event_times_)
-pred_func = partial(model.predict_cumulative_hazard_function, return_array=True)
+explainer = SurvLimeExplainer(train[0], train[1], model_output_times=model.event_times_)
  
 # explanation variable will have the computed SurvLIME values
-explanation = explainer.explain_instance(test[0].iloc[0], pred_func, num_samples=1000)
+explanation = explainer.explain_instance(test[0].iloc[0], model.predict_cumulative_hazard_function, num_samples=1000)
 ```
 
 ## Citations
