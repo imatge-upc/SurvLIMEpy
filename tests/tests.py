@@ -5,8 +5,9 @@ from sklearn.utils import check_random_state
 from survlime import survlime_explainer
 from survlime.utils.neighbours_generator import NeighboursGenerator
 from survlime.load_datasets import Loader
-from typing import List
+from typing import List, Callable
 import pandas as pd
+import pytest
 
 
 def test_shape_veterans_preprocessed() -> None:
@@ -69,14 +70,11 @@ def test_norm_less_than_one() -> None:
     loader = Loader(dataset_name="veterans")
     x, events, times = loader.load_data()
     train, _, test = loader.preprocess_datasets(x, events, times, random_seed=0)
-    try:
-        _ = compute_weights(train, test, norm=0.5)
-    except ValueError:
-        pass
+    with pytest.raises(ValueError):
+        compute_weights(train, test, norm=0.5)
 
 
 def test_categorical_features() -> None:
-
     n = 100
     random_state = check_random_state(2)
     data = {
@@ -102,7 +100,17 @@ def test_categorical_features() -> None:
     assert expected_results == True
 
 
-def compute_weights(train: np.array, test: np.array, norm: float = 2) -> List[float]:
+def test_num_rows() -> None:
+    loader = Loader(dataset_name="lung")
+    x, events, times = loader.load_data()
+    train, _, test = loader.preprocess_datasets(x, events, times, random_seed=0)
+    with pytest.raises(ValueError):
+        compute_weights(train, test, mock_predict_fn=True)
+
+
+def compute_weights(
+    train: np.array, test: np.array, norm: float = 2, mock_predict_fn: bool = False
+) -> List[float]:
     model = CoxPHSurvivalAnalysis(alpha=0.0001)
 
     model.fit(train[0], train[1])
@@ -122,11 +130,24 @@ def compute_weights(train: np.array, test: np.array, norm: float = 2) -> List[fl
 
     num_pat = 1000
     test_point = test[0].iloc[0, :]
+
     predict_chf = partial(model.predict_cumulative_hazard_function, return_array=True)
+    if mock_predict_fn:
+        predict_chf = predict_chf_mocked(model.predict_cumulative_hazard_function)
+
     b = explainer.explain_instance(
         test_point,
-        predict_chf,
+        predict_fn=predict_chf,
         verbose=False,
         num_samples=num_pat,
     )
     return b
+
+
+def predict_chf_mocked(predict_fn):
+    def inner(X):
+        total_rows = X.shape[1]
+        pred_values = predict_fn(X=X, return_array=True)
+        return pred_values[: (total_rows - 1), :]
+
+    return inner
