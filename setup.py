@@ -1,17 +1,38 @@
 from setuptools import setup, find_packages
+import pathlib
+
+here = pathlib.Path(__file__).parent.resolve()
+long_description_file = (here / "README.md").read_text(encoding="utf-8")
+
 
 setup(
     name="survlime",
-    version="0.1.8",
-    description="Survival adaptation of the LIME algorithm",
-    packages=find_packages(),
-    install_requires=["numpy", "cvxpy", "scikit-survival", "scikit-learn", "pandas","tqdm","seaborn","matplotlib"],
+    version="0.0.1",
+    description="A python package implementing SurvLIME algorithm",
+    long_description=long_description_file,
+    long_description_content_type="text/markdown",
+    packages=find_packages(where="survlime"),
+    install_requires=[
+        "numpy",
+        "cvxpy",
+        "scikit-survival",
+        "scikit-learn",
+        "pandas",
+        "tqdm",
+        "seaborn",
+        "matplotlib",
+    ],
+    package_dir={"": "survlime"},
     extras_require={"dev": ["pytest"]},
     test_suite="tests",
-    url='https://github.com/imatge-upc/SurvLIME',
-    package_data= {
-    '': ['datasets/*.csv']
+    package_data={"datasets": ["*.csv"]},
+    author="Carlos Hernández Pérez, Cristian Pachón García",
+    author_email="crherperez95@gmail.com, cc.pachon@gmail.com",
+    classifiers=[
+        "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)"
+    ],
+    project_urls={
+        "Bug Reports": "https://github.com/imatge-upc/SurvLIME/issues",
+        "Source": "https://github.com/imatge-upc/SurvLIME/",
     },
-    author='Carlos Hernández Pérez, Cristian Pachón García',
-    author_email='crherperez95@gmail.com, cc.pachon@gmail.com'
 )
