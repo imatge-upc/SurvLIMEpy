@@ -28,7 +28,7 @@ class SurvLimeExplainer:
         training_times: List[Union[bool, float, int]],
         model_output_times: np.ndarray,
         categorical_features: List[int] = None,
-        H0: np.ndarray = None,
+        H0: Union[np.ndarray, List[float]] = None,
         kernel_width: float = None,
         kernel_distance: str = "euclidean",
         kernel_fn: Callable = None,
@@ -39,11 +39,11 @@ class SurvLimeExplainer:
         """Init function.
         Args:
             training_features (Union[np.ndarray, pd.DataFrame]): data used to train the bb model
-            traininig_events (List[Union[float, int]]): training events indicator
+            training_events (List[Union[float, int]]): training events indicator
             training_times (List[Union[bool, float, int]]): training times to event
             model_output_times (np.ndarray): output times of the bb model
             categorical_features (List[int]): list of integers indicating the categorical features
-            H0 (np.ndarray): baseline cumulative hazard
+            H0 (Union[np.ndarray, List[float]]): baseline cumulative hazard
             kernel_width (float): width of the kernel to be used for computing distances
             kernel_distance (str): metric to be used for computing neighbours distance to the original point
             kernel_fn (Callable): kernel function to be used for computing distances
@@ -74,10 +74,18 @@ class SurvLimeExplainer:
                 self.train_events, self.train_times
             )
         else:
-            self.H0 = H0
-
-        # Validate H0 has the correct format
-        # self.validate_H0(self.H0)
+            if isinstance(H0, list):
+                self.H0 = np.array(H0).reshape(-1, 1)
+            elif isinstance(H0, np.ndarray):
+                total_dimensions_H0 = len(H0.shape[0])
+                if total_dimensions_H0 == 1:
+                    self.H0 = np.reshape(H0, newshape=(-1, 1))
+                elif total_dimensions_H0 == 2:
+                    self.H0 = H0
+                else:
+                    raise ValueError("H0 must be an array of maximum 2 dimensions")
+            else:
+                raise ValueError("H0 must be either a list or a numpy array")
 
         if kernel_width is None:
             kernel_width = np.sqrt(self.training_data.shape[1]) * 0.75
@@ -110,13 +118,6 @@ class SurvLimeExplainer:
         H0 = np.reshape(H0, newshape=(m, 1))
         return H0
 
-    @staticmethod
-    def validate_H0(H0: np.ndarray) -> None:
-        if len(H0.shape) != 2:
-            raise IndexError("H0 must be a 2 dimensional array.")
-        if H0.shape[1] != 1:
-            raise IndexError("The length of the last axis of must be equal to 1.")
-
     def transform_data(
         self, data: Union[np.ndarray, pd.DataFrame]
     ) -> Union[np.ndarray, pd.DataFrame]:
@@ -138,7 +139,7 @@ class SurvLimeExplainer:
 
     def explain_instance(
         self,
-        data_row: Union[List, np.ndarray, pd.Series],
+        data_row: Union[List[float], np.ndarray, pd.Series],
         predict_fn: Callable,
         type_fn: Literal["survival", "cumulative"] = "cumulative",
         num_samples: int = 1000,
@@ -146,7 +147,7 @@ class SurvLimeExplainer:
     ) -> Tuple[np.ndarray, float]:
         """Generates explanations for a prediction.
         Args:
-            data_row (Union[List, np.ndarray, pd.Series]): data point to be explained
+            data_row (Union[List[float], np.ndarray, pd.Series]): data point to be explained
             predict_fn (Callable): function that computes cumulative hazard
             type_fn (Literal["survival", "cumulative"]): whether predict_fn is the cumulative hazard funtion or survival function
             num_samples (int): number of neighbours to use
@@ -158,9 +159,10 @@ class SurvLimeExplainer:
         if isinstance(data_row, list):
             self.data_point = np.array(data_row).reshape(1, -1)
         elif isinstance(data_row, np.ndarray):
-            if len(data_row.shape[0]) == 1:
+            total_dimensions_data_row = len(data_row.shape[0])
+            if total_dimensions_data_row == 1:
                 self.data_point = np.reshape(data_row, newshape=(1, -1))
-            elif len(data_row.shape[0]) == 2:
+            elif total_dimensions_data_row == 2:
                 self.data_point = data_row
             else:
                 raise ValueError("data_point must not have more than 2 dimensions")
