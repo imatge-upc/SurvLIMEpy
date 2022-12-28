@@ -10,7 +10,7 @@
 The publication in which we introduce this package will soon be available.
 
 ## Install
-SurvLIMEpy can be installed from PyPI:
+**SurvLIMEpy** can be installed from PyPI:
 
 ```
 pip install survlimepy
@@ -48,22 +48,10 @@ Please if you use this package, do not forget to cite us. citation data availabl
 
 ## References
 
-### Datasets
-PBC:
-Therneau, T.M., Grambsch, P.M. (2000). Expected Survival. In: Modeling Survival Data: Extending the Cox Model. Statistics for Biology and Health. Springer, New York, NY. https://doi.org/10.1007/978-1-4757-3294-8_10
-
-Lung:
-Loprinzi CL. Laurie JA. Wieand HS. Krook JE. Novotny PJ. Kugler JW. Bartel J. Law M. Bateman M. Klatt NE. et al. Prospective evaluation of prognostic variables from patient-completed questionnaires. North Central Cancer Treatment Group. Journal of Clinical Oncology. 12(3):601-7, 1994.
-
-UDCA:
-T. M. Therneau and P. M. Grambsch, Modeling survival data: extending the Cox model. Springer, 2000.
-
-K. D. Lindor, E. R. Dickson, W. P Baldus, R.A. Jorgensen, J. Ludwig, P. A. Murtaugh, J. M. Harrison, R. H. Weisner, M. L. Anderson, S. M. Lange, G. LeSage, S. S. Rossi and A. F. Hofman. Ursodeoxycholic acid in the treatment of primary biliary cirrhosis. Gastroenterology, 106:1284-1290, 1994. 
-
-Veterans:
-D Kalbfleisch and RL Prentice (1980), The Statistical Analysis of Failure Time Data. Wiley, New York. 
-
 ### Algorithms
+SurvLIME:
+Maxim S. Kovalev, Lev V. Utkin, & Ernest M. Kasimov (2020). SurvLIME: A method for explaining machine learning survival models. Knowledge-Based Systems, 203, 106164.
+
 Cox Proportional Hazards Model:
 Cox, D. R. (1972). Regression models and life-tables. Journal of the Royal Statistical Society: Series B (Methodological), 34(2), 187–202.
 
@@ -79,12 +67,18 @@ Lee, C., Zame, W., Yoon, J., & van der Schaar, M. (2018). DeepHit: A Deep Learni
 DeepSurv:
 Katzman, J., Shaham, U., Cloninger, A., Bates, J., Jiang, T., & Kluger, Y. (02 2018). DeepSurv: Personalized treatment recommender system using a Cox proportional hazards deep neural network. BMC Medical Research Methodology, 18. doi:10.1186/s12874-018-0482-1
 
+### Datasets
+*PBC*: Therneau, T.M., Grambsch, P.M. (2000). Expected Survival. In: Modeling Survival Data: Extending the Cox Model. Statistics for Biology and Health. Springer, New York, NY. https://doi.org/10.1007/978-1-4757-3294-8_10
+
+*Lung*: Loprinzi CL. Laurie JA. Wieand HS. Krook JE. Novotny PJ. Kugler JW. Bartel J. Law M. Bateman M. Klatt NE. et al. Prospective evaluation of prognostic variables from patient-completed questionnaires. North Central Cancer Treatment Group. Journal of Clinical Oncology. 12(3):601-7, 1994.
+
+*UDCA*: (1) T. M. Therneau and P. M. Grambsch, Modeling survival data: extending the Cox model. Springer, 2000 and (2) K. D. Lindor, E. R. Dickson, W. P Baldus, R.A. Jorgensen, J. Ludwig, P. A. Murtaugh, J. M. Harrison, R. H. Weisner, M. L. Anderson, S. M. Lange, G. LeSage, S. S. Rossi and A. F. Hofman. Ursodeoxycholic acid in the treatment of primary biliary cirrhosis. Gastroenterology, 106:1284-1290, 1994. 
+
+*Veterans*: D Kalbfleisch and RL Prentice (1980), The Statistical Analysis of Failure Time Data. Wiley, New York. 
+
 ### Libraries
-sksurv:
-Sebastian Polsterl (2020). scikit-survival: A Library for Time-to-Event Analysis Built on Top of scikit-learn. Journal of Machine Learning Research, 21(212), 1-6.
+*sksurv*: Sebastian Polsterl (2020). scikit-survival: A Library for Time-to-Event Analysis Built on Top of scikit-learn. Journal of Machine Learning Research, 21(212), 1-6.
 
-xgbse:
-Davi Vieira, Gabriel Gimenez, Guilherme Marmerola, & Vitor Estima. (2020). XGBoost Survival Embeddings: improving statistical properties of XGBoost survival analysis implementation.
+*xgbse*: Davi Vieira, Gabriel Gimenez, Guilherme Marmerola, & Vitor Estima. (2020). XGBoost Survival Embeddings: improving statistical properties of XGBoost survival analysis implementation.
 
-pycox:
-Kvamme, H., Borgan, ., & Scheel, I.. (2019). Time-to-event prediction with neural networks and Cox regression.
+*pycox*: Kvamme, H., Borgan, ., & Scheel, I.. (2019). Time-to-event prediction with neural networks and Cox regression.
