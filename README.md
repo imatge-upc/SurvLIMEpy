@@ -24,18 +24,35 @@ from sksurv.linear_model import CoxPHSurvivalAnalysis
 
 # Load UDCA dataset
 loader = Loader(dataset_name='udca')
-x, events, times = loader.load_data()
+X, events, times = loader.load_data()
 
 # Train a model
-train, val, test = loader.preprocess_datasets(x, events, times)
+train, val, test = loader.preprocess_datasets(X, events, times)
 model = CoxPHSurvivalAnalysis()
 model.fit(train[0], train[1])
 
 # Use SurvLimeExplainer class to find the feature importance
-explainer = SurvLimeExplainer(train[0], train[1], model_output_times=model.event_times_)
- 
+training_features = train[0]
+training_events = [event for event, _ in train[1]]
+training_times = [time for _, time in train[1]]
+
+explainer = SurvLimeExplainer(
+    training_features=training_features,
+    training_events=training_events,
+    training_times=training_times,
+    model_output_times=model.event_times_,
+)
+
 # explanation variable will have the computed SurvLIME values
-explanation = explainer.explain_instance(test[0].iloc[0], model.predict_cumulative_hazard_function, num_samples=1000)
+explanation = explainer.explain_instance(
+    data_row=test[0].iloc[0],
+    predict_fn=model.predict_cumulative_hazard_function,
+    num_samples=1000,
+)
+print(explanation)
+
+# Display the weights
+explainer.plot_weights()
 ```
 
 ## Model compatibility
