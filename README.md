@@ -92,4 +92,4 @@ Please if you use this package, do not forget to cite us. citation data availabl
 
 *xgbse*: Davi Vieira, Gabriel Gimenez, Guilherme Marmerola, & Vitor Estima. (2020). XGBoost Survival Embeddings: improving statistical properties of XGBoost survival analysis implementation.
 
-*pycox*: Kvamme, H., Borgan, ., & Scheel, I.. (2019). Time-to-event prediction with neural networks and Cox regression.
+*pycox*: Håvard Kvamme, Ørnulf Borgan, and Ida Scheel. Time-to-event prediction with neural networks and Cox regression. Journal of Machine Learning Research, 20(129):1–30, 2019.
