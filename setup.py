@@ -6,7 +6,7 @@ long_description_file = (here / "README.md").read_text(encoding="utf-8")
 
 
 setup(
-    name="survlime",
+    name="survlimepy",
     version="0.0.1",
     description="A python package implementing SurvLIME algorithm",
     long_description=long_description_file,
@@ -22,7 +22,7 @@ setup(
         "seaborn",
         "matplotlib",
     ],
-    package_dir={"": "survlime"},
+    package_dir={"": "survlimepy"},
     extras_require={"dev": ["pytest"]},
     test_suite="tests",
     package_data={"datasets": ["*.csv"]},

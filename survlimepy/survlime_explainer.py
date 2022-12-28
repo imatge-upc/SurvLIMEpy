@@ -13,9 +13,9 @@ from tqdm import tqdm
 from matplotlib import pyplot as plt
 from sklearn.utils import check_random_state
 from sksurv.nonparametric import nelson_aalen_estimator
-from survlime.utils.optimization import OptFuncionMaker
-from survlime.utils.neighbours_generator import NeighboursGenerator
-from survlime.utils.predict import predict_wrapper
+from survlimepy.utils.optimization import OptFuncionMaker
+from survlimepy.utils.neighbours_generator import NeighboursGenerator
+from survlimepy.utils.predict import predict_wrapper
 
 
 class SurvLimeExplainer:

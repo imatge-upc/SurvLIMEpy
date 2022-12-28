@@ -2,10 +2,10 @@ import numpy as np
 from functools import partial
 from sksurv.linear_model import CoxPHSurvivalAnalysis
 from sklearn.utils import check_random_state
-from survlime import SurvLimeExplainer
-from survlime.load_datasets import RandomSurvivalData
-from survlime.utils.neighbours_generator import NeighboursGenerator
-from survlime.load_datasets import Loader
+from survlimepy import SurvLimeExplainer
+from survlimepy.load_datasets import RandomSurvivalData
+from survlimepy.utils.neighbours_generator import NeighboursGenerator
+from survlimepy.load_datasets import Loader
 from typing import List
 import pandas as pd
 import pytest
