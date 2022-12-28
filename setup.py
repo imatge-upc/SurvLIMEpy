@@ -32,7 +32,7 @@ setup(
         "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)"
     ],
     project_urls={
-        "Bug Reports": "https://github.com/imatge-upc/SurvLIME/issues",
-        "Source": "https://github.com/imatge-upc/SurvLIME/",
+        "Bug Reports": "https://github.com/imatge-upc/SurvLIMEpy/issues",
+        "Source": "https://github.com/imatge-upc/SurvLIMEpy/",
     },
 )
