@@ -1,4 +1,5 @@
 from functools import partial
+import logging
 from copy import deepcopy
 from typing import Callable, Tuple, Union, List, Literal
 import numpy as np
@@ -56,22 +57,23 @@ class SurvLimeExplainer:
 
         self.random_state = check_random_state(random_state)
         self.sample_around_instance = sample_around_instance
-        self.training_data = training_features
-        self.train_events = training_events
-        self.train_times = training_times
+        self.training_features = training_features
+        self.training_events = training_events
+        self.training_times = training_times
         self.categorical_features = categorical_features
         self.model_output_times = model_output_times
         self.computed_weights = None
-        if isinstance(self.training_data, pd.DataFrame):
-            self.feature_names = self.training_data.columns
+        self.is_data_frame = isinstance(self.training_features, pd.DataFrame)
+        if self.is_data_frame:
+            self.feature_names = self.training_features.columns
         else:
             self.feature_names = [
-                f"feature_{i}" for i in range(self.training_data.shape[1])
+                f"feature_{i}" for i in range(self.training_features.shape[1])
             ]
 
         if H0 is None:
             self.H0 = self.compute_nelson_aalen_estimator(
-                self.train_events, self.train_times
+                self.training_events, self.training_times
             )
         else:
             if isinstance(H0, list):
@@ -88,7 +90,7 @@ class SurvLimeExplainer:
                 raise ValueError("H0 must be either a list or a numpy array")
 
         if kernel_width is None:
-            kernel_width = np.sqrt(self.training_data.shape[1]) * 0.75
+            kernel_width = np.sqrt(self.training_features.shape[1]) * 0.75
         kernel_width = float(kernel_width)
 
         self.kernel_distance = kernel_distance
@@ -101,12 +103,7 @@ class SurvLimeExplainer:
         self.kernel_fn = partial(kernel_fn, kernel_width=kernel_width)
         self.functional_norm = functional_norm
         self.scaler = sklearn.preprocessing.StandardScaler(with_mean=False)
-        self.scaler.fit(self.training_data)
-        self.is_data_frame = isinstance(self.training_data, pd.DataFrame)
-        if self.is_data_frame:
-            self.column_names = self.training_data.columns
-        else:
-            self.column_names = None
+        self.scaler.fit(self.training_features)
 
     @staticmethod
     def compute_nelson_aalen_estimator(
@@ -128,11 +125,10 @@ class SurvLimeExplainer:
         Returns:
             data_transformed (Union[np.ndarray, pd.DataFrame]): transformed data
         """
-        is_orinial_data_pandas = isinstance(self.training_data, pd.DataFrame)
-        if is_orinial_data_pandas:
-            data_transformed = pd.DataFrame(data, columns=self.column_names)
+        if self.is_data_frame:
+            data_transformed = pd.DataFrame(data, columns=self.feature_names)
         else:
-            training_dtype = self.training_data.dtype
+            training_dtype = self.training_features.dtype
             data_transformed = np.copy(data)
             data_transformed = data_transformed.astype(training_dtype)
         return data_transformed
@@ -159,7 +155,7 @@ class SurvLimeExplainer:
         if isinstance(data_row, list):
             self.data_point = np.array(data_row).reshape(1, -1)
         elif isinstance(data_row, np.ndarray):
-            total_dimensions_data_row = len(data_row.shape[0])
+            total_dimensions_data_row = len(data_row.shape)
             if total_dimensions_data_row == 1:
                 self.data_point = np.reshape(data_row, newshape=(1, -1))
             elif total_dimensions_data_row == 2:
@@ -172,7 +168,7 @@ class SurvLimeExplainer:
             raise ValueError("data_point must be either a list or a numpy array")
 
         neighbours_generator = NeighboursGenerator(
-            training_data=self.training_data,
+            training_features=self.training_features,
             data_row=self.data_point,
             categorical_features=self.categorical_features,
             random_state=self.random_state,
@@ -230,7 +226,7 @@ class SurvLimeExplainer:
         """
         epsilon = 10 ** (-6)
         num_features = data.shape[1]
-        unique_times_to_event = np.sort(np.unique(self.train_times))
+        unique_times_to_event = np.sort(np.unique(self.training_times))
         m = unique_times_to_event.shape[0]
         FN_pred = predict_wrapper(
             predict_fn=predict_fn,
@@ -310,7 +306,7 @@ class SurvLimeExplainer:
         Args:
             figsize (Tuple[int, int]): size of the figure
             feature_names (List[str]): names of the features
-            scale_with_data_point (bool): whether to scale the weights with the data point
+            scale_with_data_point (bool): whether to perform the elementwise multiplication between the point to be explained and the coefficients
             figure_path (str): path to save the figure
         Returns:
             None
@@ -397,39 +393,44 @@ class SurvLimeExplainer:
         sns.set()
         if isinstance(data, pd.DataFrame):
             data = data.values
-        surv_volume = np.ndarray((num_repetitions, data.shape[0], data.shape[1]))
-
-        for rep in tqdm(range(num_repetitions)):
-            computed_weights = []
-            for i, data_row in enumerate(data):
+        all_solved = True
+        total_rows = data.shape[0]
+        total_cols = data.shape[1]
+        weights = np.empty(shape=(total_rows, total_cols))
+        for i_row in tqdm(range(total_rows)):
+            current_row = data[i_row]
+            weights_current_row = []
+            for _ in range(num_repetitions):
                 # sample data point from the dataset
                 try:
                     b = self.explain_instance(
-                        data_row,
+                        current_row,
                         predict_fn,
                         type_fn=type_fn,
                         num_samples=num_samples,
                         verbose=False,
                     )
-                    computed_weights.append(b)
-                except:
-                    # create a np array of Null values
-                    computed_weights.append(
-                        np.full(shape=(len(self.feature_names),), fill_value=np.nan)
-                    )
-                    print(
-                        f"Data point {i} in repetition {rep} failed, continuing with next data point..."
-                    )
+                    weights_current_row.append(b)
+                except (
+                    cp.error.DCPError,
+                    cp.error.DGPError,
+                    cp.error.DPPError,
+                    cp.error.SolverError,
+                ):
+                    all_solved = False
+            weights_current_row = np.array(weights_current_row)
+            mean_weight_row = np.mean(weights_current_row, axis=0)
+            weights[i_row] = mean_weight_row
 
-            surv_volume[rep] = np.array(computed_weights)
-        montecarlo_weights = pd.DataFrame(
-            data=np.mean(surv_volume, axis=0), columns=self.feature_names
-        )
+        if not all_solved:
+            logging.warning(f"There were some simulations without a solution")
+
+        montecarlo_weights = pd.DataFrame(data=weights, columns=self.feature_names)
         montecarlo_weights = montecarlo_weights.reindex(
             montecarlo_weights.mean().sort_values(ascending=False).index, axis=1
         )
 
-        fig, ax = plt.subplots(1, 1, figsize=(11, 7), sharey=True)
+        _, ax = plt.subplots(1, 1, figsize=(11, 7), sharey=True)
         ax.tick_params(labelrotation=90)
         p = sns.boxenplot(
             x="variable",
