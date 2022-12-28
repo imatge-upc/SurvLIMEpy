@@ -8,7 +8,7 @@ class NeighboursGenerator:
 
     def __init__(
         self,
-        training_data: Union[np.ndarray, pd.DataFrame],
+        training_features: Union[np.ndarray, pd.DataFrame],
         data_row: np.ndarray,
         categorical_features: List[int] = None,
         random_state: int = None,
@@ -17,7 +17,7 @@ class NeighboursGenerator:
         """Init function.
 
         Args:
-            training_data (Union[np.ndarray, pd.DataFrame]): data used to train the bb model
+            training_features (Union[np.ndarray, pd.DataFrame]): data used to train the bb model
             data_row (np.ndarray): data point to be explained of shape (1 x features)
             categorical_features (List[int]): list of integeter indicating the categorical features
             random_state (int): number to be used for random seeds
@@ -26,22 +26,22 @@ class NeighboursGenerator:
             None
         """
 
-        if isinstance(training_data, pd.DataFrame):
-            self.training_data = training_data.to_numpy()
-        elif isinstance(training_data, list):
-            self.training_data = np.array(training_data)
+        if isinstance(training_features, pd.DataFrame):
+            self.training_features = training_features.to_numpy()
+        elif isinstance(training_features, list):
+            self.training_features = np.array(training_features)
         else:
-            self.training_data = training_data
+            self.training_features = training_features
 
         if isinstance(data_row, pd.DataFrame):
             self.data_row = data_row.to_numpy()
             self.data_row = self.data_row[0]
         elif isinstance(data_row, list):
-            self.data_row = np.array(training_data)
+            self.data_row = np.array(training_features)
         else:
             self.data_row = data_row
 
-        self.total_features = self.training_data.shape[1]
+        self.total_features = self.training_features.shape[1]
 
         if categorical_features is None:
             self.cat_features = []
@@ -75,10 +75,10 @@ class NeighboursGenerator:
         """
 
         distribution = {}
-        total = self.training_data.shape[0]
+        total = self.training_features.shape[0]
         if self.type_features in ["mixed", "categorical"]:
             for idx_feature in self.cat_features:
-                feautre_values = self.training_data[:, idx_feature]
+                feautre_values = self.training_features[:, idx_feature]
                 unique, count = np.unique(feautre_values, return_counts=True)
                 distribution[idx_feature] = self.to_dict(unique, count / total)
         return distribution
@@ -97,11 +97,11 @@ class NeighboursGenerator:
         """
 
         # Get continuous features
-        training_data_cont = self.training_data[:, self.cont_features]
+        training_features_cont = self.training_features[:, self.cont_features]
 
         # Estimate mean and variance for continuous features
-        mean_value = np.nanmean(training_data_cont, axis=0, dtype=np.float32)
-        sd_value = np.nanstd(training_data_cont, axis=0, dtype=np.float32)
+        mean_value = np.nanmean(training_features_cont, axis=0, dtype=np.float32)
+        sd_value = np.nanstd(training_features_cont, axis=0, dtype=np.float32)
 
         # Generate neighbours
         neighbours = self.random_state.normal(
@@ -109,7 +109,7 @@ class NeighboursGenerator:
         )
         neighbours *= sd_value
         if sample_around_instance:
-            neighbours += self.data_row[self.cont_features]
+            neighbours += self.data_row[0][self.cont_features]
         else:
             neighbours += mean_value
         return neighbours
