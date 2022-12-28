@@ -5,21 +5,21 @@
 </p>
 
 
-SurvLIME (**Survival Local Interpretable Model-agnostic Explanation**) is a local interpretable algorithm for Survival Analysis models. **SurvLIMEpy** implements the method proposed in the [original paper](https://www.sciencedirect.com/science/article/abs/pii/S0950705120304044).
+**SurvLIMEpy** implements SurvLIME algorithm (**Survival Local Interpretable Model-agnostic Explanation**), a local interpretable algorithm for Survival Analysis, which was proposed in [this paper](https://www.sciencedirect.com/science/article/abs/pii/S0950705120304044).
 
 The publication in which we introduce this package will soon be available.
 
 ## Install
-SurvLIME can be installed from PyPI:
+SurvLIMEpy can be installed from PyPI:
 
 ```
-pip install survlime
+pip install survlimepy
 ```
 
 ## How to use
 ```python
-from survlime import SurvLimeExplainer
-from survlime.load_datasets import Loader
+from survlimepy import SurvLimeExplainer
+from survlimepy.load_datasets import Loader
 from sksurv.linear_model import CoxPHSurvivalAnalysis
 
 # Load UDCA dataset
@@ -31,7 +31,7 @@ train, val, test = loader.preprocess_datasets(x, events, times)
 model = CoxPHSurvivalAnalysis()
 model.fit(train[0], train[1])
 
-# Use SurvLIME explainer
+# Use SurvLimeExplainer class to find the feature importance
 explainer = SurvLimeExplainer(train[0], train[1], model_output_times=model.event_times_)
  
 # explanation variable will have the computed SurvLIME values
