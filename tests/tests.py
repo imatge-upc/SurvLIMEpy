@@ -3,6 +3,7 @@ from functools import partial
 from sksurv.linear_model import CoxPHSurvivalAnalysis
 from sklearn.utils import check_random_state
 from survlime import SurvLimeExplainer
+from survlime.load_datasets import RandomSurvivalData
 from survlime.utils.neighbours_generator import NeighboursGenerator
 from survlime.load_datasets import Loader
 from typing import List
@@ -88,7 +89,7 @@ def test_categorical_features() -> None:
     data_row = df.loc[0].to_numpy()
 
     neighbours_generator = NeighboursGenerator(
-        training_data=df,
+        training_features=df,
         data_row=data_row,
         categorical_features=[2, 3],
         random_state=random_state,
@@ -106,6 +107,57 @@ def test_num_rows() -> None:
     train, _, test = loader.preprocess_datasets(x, events, times, random_seed=0)
     with pytest.raises(ValueError):
         compute_weights(train, test, mock_predict_fn=True)
+
+
+def test_montecarlo_simulation() -> None:
+    # Generate data
+    n_points = 500
+    true_coef = [1, 2]
+    r = 1
+    center = [0, 0]
+    prob_event = 0.9
+    lambda_weibull = 10 ** (-6)
+    v_weibull = 2
+
+    rsd = RandomSurvivalData(
+        center=center,
+        radius=r,
+        coefficients=true_coef,
+        prob_event=prob_event,
+        lambda_weibull=lambda_weibull,
+        v_weibull=v_weibull,
+        time_cap=None,
+        random_seed=90,
+    )
+
+    # Train
+    X, time_to_event, delta = rsd.random_survival_data(num_points=n_points)
+    z = [(d, t) for d, t in zip(delta, time_to_event)]
+    y = np.array(z, dtype=[("delta", np.bool_), ("time_to_event", np.float32)])
+
+    # Fit a Cox model
+    cox = CoxPHSurvivalAnalysis()
+    cox.fit(X, y)
+
+    # User montecarlo
+    data = np.array([[0, 0], [1, 1]])
+    explainer = SurvLimeExplainer(
+        training_features=X,
+        training_events=[tp[0] for tp in y],
+        training_times=[tp[1] for tp in y],
+        model_output_times=cox.event_times_,
+        sample_around_instance=True,
+        random_state=10,
+    )
+
+    explanations = explainer.montecarlo_explanation(
+        data=data,
+        predict_fn=cox.predict_cumulative_hazard_function,
+        num_samples=1,
+        num_repetitions=1,
+    )
+
+    assert explanations.shape == data.shape
 
 
 def compute_weights(
