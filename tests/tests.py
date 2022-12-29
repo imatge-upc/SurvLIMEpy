@@ -6,7 +6,7 @@ from survlimepy import SurvLimeExplainer
 from survlimepy.load_datasets import RandomSurvivalData
 from survlimepy.utils.neighbours_generator import NeighboursGenerator
 from survlimepy.load_datasets import Loader
-from typing import List
+from typing import List, Dict
 import pandas as pd
 import pytest
 
@@ -158,6 +158,71 @@ def test_montecarlo_simulation() -> None:
     )
 
     assert explanations.shape == data.shape
+
+
+def test_value_error_center_coefficients(random_survidal_data) -> None:
+    with pytest.raises(ValueError):
+        RandomSurvivalData(
+            center=[1, 2, 3],
+            radius=random_survidal_data["radius"],
+            coefficients=random_survidal_data["coefficients"],
+            prob_event=random_survidal_data["prob_event"],
+            lambda_weibull=random_survidal_data["lambda_weibull"],
+            v_weibull=random_survidal_data["v_weibull"],
+        )
+
+
+def test_value_error_negative_lambda_weibull(random_survidal_data) -> None:
+    with pytest.raises(ValueError):
+        RandomSurvivalData(
+            center=random_survidal_data["center"],
+            radius=random_survidal_data["radius"],
+            coefficients=random_survidal_data["coefficients"],
+            prob_event=random_survidal_data["prob_event"],
+            lambda_weibull=-1,
+            v_weibull=random_survidal_data["v_weibull"],
+        )
+
+
+def test_value_error_negative_v_weibull(random_survidal_data) -> None:
+    with pytest.raises(ValueError):
+        RandomSurvivalData(
+            center=random_survidal_data["center"],
+            radius=random_survidal_data["radius"],
+            coefficients=random_survidal_data["coefficients"],
+            prob_event=random_survidal_data["prob_event"],
+            lambda_weibull=random_survidal_data["lambda_weibull"],
+            v_weibull=-1,
+        )
+
+
+def test_shape_spherical_data(random_survidal_data) -> None:
+    num_points = 100
+    center = random_survidal_data["center"]
+    rsd = RandomSurvivalData(
+        center=center,
+        radius=random_survidal_data["radius"],
+        coefficients=random_survidal_data["coefficients"],
+        prob_event=random_survidal_data["prob_event"],
+        lambda_weibull=random_survidal_data["lambda_weibull"],
+        v_weibull=random_survidal_data["v_weibull"],
+    )
+    data = rsd.spherical_data(num_points=num_points)
+    data_shape = data.shape
+    assert data_shape == (num_points, len(center))
+
+
+@pytest.fixture
+def random_survidal_data() -> Dict:
+    data = {
+        "center": [0, 0],
+        "radius": 1,
+        "coefficients": [1, 2],
+        "prob_event": 0.9,
+        "lambda_weibull": 10 ** (-5),
+        "v_weibull": 2,
+    }
+    return data
 
 
 def compute_weights(
