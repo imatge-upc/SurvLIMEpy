@@ -430,7 +430,7 @@ class SurvLimeExplainer:
         if not all_solved:
             logging.warning(f"There were some simulations without a solution")
 
-        if feature_names:
+        if feature_names is not None:
             if len(feature_names) != total_cols:
                 raise TypeError(f"feature_names must have {total_cols} elements")
             col_names = feature_names
