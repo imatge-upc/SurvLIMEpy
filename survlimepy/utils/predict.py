@@ -29,7 +29,7 @@ def interpolate_values(
     return interpolated_matrix
 
 
-def validate_output_dimension(
+def validate_predicted_matrix(
     matrix: np.array, expected_num_rows: int = None, expected_num_cols: int = None
 ) -> None:
     """Validate the output
@@ -41,6 +41,9 @@ def validate_output_dimension(
     """
     total_rows = matrix.shape[0]
     total_cols = matrix.shape[1]
+    are_nan_values = np.isnan(matrix).any()
+    if are_nan_values:
+        raise ValueError("There are nan values produced by predict_fn function")
     if expected_num_rows:
         if total_rows != expected_num_rows:
             raise ValueError(
@@ -110,7 +113,7 @@ def predict_wrapper(
                 predicted_values = values
             # The number of columns does not match with the number of unique times to event
             else:
-                validate_output_dimension(
+                validate_predicted_matrix(
                     matrix=values, expected_num_rows=num_individuals
                 )
                 predicted_values = interpolate_values(
@@ -124,7 +127,7 @@ def predict_wrapper(
             if isinstance(values[0], StepFunction):
                 predicted_values = transform_step_function(values)
                 if predicted_values.shape[1] != number_unique_times:
-                    validate_output_dimension(
+                    validate_predicted_matrix(
                         matrix=predicted_values, expected_num_rows=num_individuals
                     )
                     predicted_values = interpolate_values(
@@ -137,7 +140,7 @@ def predict_wrapper(
     else:
         raise TypeError("Unknown type of object")
 
-    validate_output_dimension(
+    validate_predicted_matrix(
         matrix=predicted_values,
         expected_num_rows=num_individuals,
         expected_num_cols=number_unique_times,
