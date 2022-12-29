@@ -30,7 +30,7 @@ def interpolate_values(
 
 
 def validate_output_dimension(
-    matrix: np.array, expected_num_rows: int, expected_num_cols: int
+    matrix: np.array, expected_num_rows: int = None, expected_num_cols: int = None
 ) -> None:
     """Validate the output
 
@@ -41,18 +41,18 @@ def validate_output_dimension(
     """
     total_rows = matrix.shape[0]
     total_cols = matrix.shape[1]
+    if expected_num_rows:
+        if total_rows != expected_num_rows:
+            raise ValueError(
+                f"The predicted function returns {total_rows} rows while expecting {expected_num_rows} rows"
+            )
+    if expected_num_cols:
+        if total_cols != expected_num_cols:
+            raise ValueError(
+                f"The predicted function returns {total_cols} columns while expecting {expected_num_cols} columns"
+            )
 
-    if total_rows != expected_num_rows:
-        raise ValueError(
-            f"The predicted function returns {total_rows} rows while expecting {expected_num_rows} rows"
-        )
-
-    if total_cols != expected_num_cols:
-        raise ValueError(
-            f"The predicted function returns {total_cols} columns while expecting {expected_num_cols} columns"
-        )
-    else:
-        return None
+    return None
 
 
 def transform_step_function(array_step_functions: np.array) -> np.array:
@@ -110,6 +110,9 @@ def predict_wrapper(
                 predicted_values = values
             # The number of columns does not match with the number of unique times to event
             else:
+                validate_output_dimension(
+                    matrix=values, expected_num_rows=num_individuals
+                )
                 predicted_values = interpolate_values(
                     matrix=values,
                     unique_times_to_event=unique_times_to_event,
@@ -121,6 +124,9 @@ def predict_wrapper(
             if isinstance(values[0], StepFunction):
                 predicted_values = transform_step_function(values)
                 if predicted_values.shape[1] != number_unique_times:
+                    validate_output_dimension(
+                        matrix=predicted_values, expected_num_rows=num_individuals
+                    )
                     predicted_values = interpolate_values(
                         matrix=predicted_values,
                         unique_times_to_event=unique_times_to_event,
