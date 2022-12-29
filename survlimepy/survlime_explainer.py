@@ -314,11 +314,14 @@ class SurvLimeExplainer:
 
         if self.computed_weights is None:
             raise ValueError(
-                "SurvLIME weights not computed yet. Call explain_instance first to use this function"
+                "SurvLIME weights not computed yet. Call explain_instance first before using this function"
             )
 
-        elif feature_names is not None:
-            feature_names = feature_names
+        if feature_names is not None:
+            if len(feature_names) != self.computed_weights[0]:
+                raise TypeError(
+                    f"feature_names must have {self.computed_weights[0]} elements"
+                )
         else:
             feature_names = self.feature_names
 
@@ -377,6 +380,7 @@ class SurvLimeExplainer:
         data: Union[np.ndarray, pd.DataFrame],
         predict_fn: Callable,
         type_fn: Literal["survival", "cumulative"] = "cumulative",
+        feature_names: List[str] = None,
         num_samples: int = 1000,
         num_repetitions: int = 10,
     ) -> pd.DataFrame:
@@ -385,6 +389,7 @@ class SurvLimeExplainer:
             data (np.ndarray): data points to be explained
             predict_fn (Callable): function that computes cumulative hazard
             type_fn (Literal["survival", "cumulative"]): whether predict_fn is the cumulative hazard funtion or survival function
+            feature_names (List[str]): names of the features
             num_samples (int): number of neighbours to use
             num_repetitions (int): number of times to repeat the explanation
         Returns:
@@ -404,8 +409,8 @@ class SurvLimeExplainer:
                 # sample data point from the dataset
                 try:
                     b = self.explain_instance(
-                        current_row,
-                        predict_fn,
+                        data_row=current_row,
+                        predict_fn=predict_fn,
                         type_fn=type_fn,
                         num_samples=num_samples,
                         verbose=False,
@@ -425,7 +430,13 @@ class SurvLimeExplainer:
         if not all_solved:
             logging.warning(f"There were some simulations without a solution")
 
-        montecarlo_weights = pd.DataFrame(data=weights, columns=self.feature_names)
+        if feature_names:
+            if len(feature_names) != total_cols:
+                raise TypeError(f"feature_names must have {total_cols} elements")
+            col_names = feature_names
+        else:
+            col_names = self.feature_names
+        montecarlo_weights = pd.DataFrame(data=weights, columns=col_names)
         montecarlo_weights = montecarlo_weights.reindex(
             montecarlo_weights.mean().sort_values(ascending=False).index, axis=1
         )
