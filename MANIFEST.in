@@ -1,1 +1,5 @@
-recursive-include survlime/datasets/*.csv
+recursive-include survlimepy/datasets *.csv
+include README.md
+include MANIFEST.in
+include LICENSE
+include logo.png
