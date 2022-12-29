@@ -79,7 +79,7 @@ class SurvLimeExplainer:
             if isinstance(H0, list):
                 self.H0 = np.array(H0).reshape(-1, 1)
             elif isinstance(H0, np.ndarray):
-                total_dimensions_H0 = len(H0.shape[0])
+                total_dimensions_H0 = len(H0.shape)
                 if total_dimensions_H0 == 1:
                     self.H0 = np.reshape(H0, newshape=(-1, 1))
                 elif total_dimensions_H0 == 2:
