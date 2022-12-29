@@ -28,6 +28,7 @@ setup(
     package_data={"datasets": ["*.csv"]},
     author="Carlos Hernández Pérez, Cristian Pachón García",
     author_email="crherperez95@gmail.com, cc.pachon@gmail.com",
+    keywords="Interpretable Machine Learning, eXplainalbe Artificial Intelligence, Survival Analysis, Machine Learning, Python",
     classifiers=[
         "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)"
     ],
