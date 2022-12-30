@@ -63,6 +63,7 @@ class SurvLimeExplainer:
         self.categorical_features = categorical_features
         self.model_output_times = model_output_times
         self.computed_weights = None
+        self.montecarlo_weights = None
         self.is_data_frame = isinstance(self.training_features, pd.DataFrame)
         if self.is_data_frame:
             self.feature_names = self.training_features.columns
@@ -317,7 +318,7 @@ class SurvLimeExplainer:
             )
 
         if feature_names is not None:
-            if len(feature_names) != self.computed_weights[0]:
+            if len(feature_names) != self.computed_weights.shape[0]:
                 raise TypeError(
                     f"feature_names must have {self.computed_weights[0]} elements."
                 )
@@ -332,9 +333,9 @@ class SurvLimeExplainer:
         _, ax = plt.subplots(figsize=figsize)
 
         # sort weights in descending order
-        sorted_weights = np.sort(weights)[::-1]
+        sorted_weights = np.sort(weights)[0][::-1]
         # sort feature names so that they match the sorted weights
-        sorted_feature_names = [feature_names[i] for i in np.argsort(weights)[::-1]]
+        sorted_feature_names = [feature_names[i] for i in np.argsort(weights)[0][::-1]]
 
         # divide the sorted weights and sorted feature names into positive and negative
         pos_weights = [w for w in sorted_weights if w > 0]
@@ -372,6 +373,7 @@ class SurvLimeExplainer:
 
         if figure_path is not None:
             plt.savefig(figure_path, dpi=200, bbox_inches="tight")
+
         plt.show()
 
     def montecarlo_explanation(
@@ -379,25 +381,22 @@ class SurvLimeExplainer:
         data: Union[np.ndarray, pd.DataFrame],
         predict_fn: Callable,
         type_fn: Literal["survival", "cumulative"] = "cumulative",
-        feature_names: List[str] = None,
         num_samples: int = 1000,
         num_repetitions: int = 10,
-        display_plot: bool = True,
     ) -> pd.DataFrame:
         """Generates explanations for a prediction.
         Args:
             data (np.ndarray): data points to be explained.
             predict_fn (Callable): function that computes cumulative hazard.
             type_fn (Literal["survival", "cumulative"]): whether predict_fn is the cumulative hazard funtion or survival function.
-            feature_names (List[str]): names of the features.
             num_samples (int): number of neighbours to use.
             num_repetitions (int): number of times to repeat the explanation.
-            display_plot (bool): boolean indicating whether to display the boxenplots.
         Returns:
             montecarlo_explanation (pd.DataFrame): dataframe with the montecarlo explanation.
         """
         if isinstance(data, pd.DataFrame):
             data = data.values
+        self.matrix_to_explain = np.copy(data)
         all_solved = True
         total_rows = data.shape[0]
         total_cols = data.shape[1]
@@ -429,6 +428,31 @@ class SurvLimeExplainer:
 
         if not all_solved:
             logging.warning(f"There were some simulations without a solution.")
+        self.montecarlo_weights = weights
+        return weights
+
+    def plot_montecarlo_weights(
+        self,
+        figsize: Tuple[int, int] = (10, 10),
+        feature_names: List[str] = None,
+        scale_with_data_point: bool = False,
+        figure_path: str = None,
+    ) -> None:
+        """Generates explanations for a prediction.
+        Args:
+            figsize (Tuple[int, int]): size of the figure.
+            feature_names (List[str]): names of the features.
+            scale_with_data_point (bool): whether to perform the elementwise multiplication between the point to be explained and the coefficients.
+            figure_path (str): path to save the figure.
+        Returns:
+            None.
+        """
+        if self.montecarlo_weights is None:
+            raise ValueError(
+                "Monte-Carlo weights not computed yet. Call montecarlo_explanation first before using this function."
+            )
+
+        total_cols = self.montecarlo_weights.shape[1]
 
         if feature_names is not None:
             if len(feature_names) != total_cols:
@@ -436,21 +460,14 @@ class SurvLimeExplainer:
             col_names = feature_names
         else:
             col_names = self.feature_names
-        montecarlo_weights = pd.DataFrame(data=weights, columns=col_names)
 
-        if display_plot:
-            self.display_boxenplot(data=montecarlo_weights)
+        if scale_with_data_point:
+            scaled_data = np.multiply(self.montecarlo_weights, self.matrix_to_explain)
 
-        return montecarlo_weights
+        else:
+            scaled_data = self.montecarlo_weights
+        data = pd.DataFrame(data=scaled_data, columns=col_names)
 
-    @staticmethod
-    def display_boxenplot(data):
-        """Generates explanations for a prediction.
-        Args:
-            data (np.ndarray): data points to be displayed.
-        Returns:
-            None.
-        """
         sns.set()
         median_up = {}
         median_down = {}
@@ -476,7 +493,7 @@ class SurvLimeExplainer:
         data_reindex = data.reindex(columns=custom_pal.keys())
         data_melt = pd.melt(data_reindex)
 
-        _, ax = plt.subplots(1, 1, figsize=(11, 7), sharey=True)
+        _, ax = plt.subplots(figsize=figsize)
         ax.tick_params(labelrotation=90)
         p = sns.boxenplot(
             x="variable",
@@ -495,4 +512,8 @@ class SurvLimeExplainer:
 
         plt.xticks(fontsize=16, rotation=90)
         plt.yticks(fontsize=14, rotation=0)
+
+        if figure_path is not None:
+            plt.savefig(figure_path, dpi=200, bbox_inches="tight")
+
         plt.show()
