@@ -311,7 +311,6 @@ class SurvLimeExplainer:
         Returns:
             None.
         """
-
         if self.computed_weights is None:
             raise ValueError(
                 "SurvLIME weights not computed yet. Call explain_instance first before using this function."
@@ -469,8 +468,8 @@ class SurvLimeExplainer:
         median_down = dict(
             sorted(median_down.items(), key=lambda item: item[1], reverse=True)
         )
-        pal_up = sns.color_palette("rocket", n_colors=len(median_up))
-        pal_down = sns.color_palette("light:b", n_colors=len(median_down))
+        pal_up = sns.color_palette("Reds_r", n_colors=len(median_up))
+        pal_down = sns.color_palette("Blues", n_colors=len(median_down))
         colors_up = {key: val for key, val in zip(median_up.keys(), pal_up)}
         colors_down = {key: val for key, val in zip(median_down.keys(), pal_down)}
         custom_pal = {**colors_up, **colors_down}
