@@ -30,12 +30,16 @@ def interpolate_values(
 
 
 def validate_predicted_matrix(
-    matrix: np.array, expected_num_rows: int = None, expected_num_cols: int = None
+    matrix: np.array,
+    individuals: np.array = None,
+    expected_num_rows: int = None,
+    expected_num_cols: int = None,
 ) -> None:
     """Validate the output
 
     Args:
         matrix (np.array): matrix to validate.
+        individuals (np.array): individuals to be predicted.
         expected_num_rows (int): expected number of rows.
         expected_num_cols (int): expected number of columns.
     """
@@ -43,7 +47,12 @@ def validate_predicted_matrix(
     total_cols = matrix.shape[1]
     are_nan_values = np.isnan(matrix).any()
     if are_nan_values:
-        raise ValueError("There are nan values produced by predict_fn function")
+        msg = "There are nan values produced by predict_fn function."
+        if individuals is not None:
+            idx = np.argwhere(np.isnan(matrix))
+            example = str(individuals[idx[0][0], :])
+            msg = f"{msg}. Try to predict {example} array"
+        raise ValueError(msg)
     if expected_num_rows:
         if total_rows != expected_num_rows:
             raise ValueError(
@@ -114,7 +123,9 @@ def predict_wrapper(
             # The number of columns does not match with the number of unique times to event
             else:
                 validate_predicted_matrix(
-                    matrix=values, expected_num_rows=num_individuals
+                    matrix=values,
+                    individuals=data,
+                    expected_num_rows=num_individuals,
                 )
                 predicted_values = interpolate_values(
                     matrix=values,
@@ -128,7 +139,9 @@ def predict_wrapper(
                 predicted_values = transform_step_function(values)
                 if predicted_values.shape[1] != number_unique_times:
                     validate_predicted_matrix(
-                        matrix=predicted_values, expected_num_rows=num_individuals
+                        matrix=predicted_values,
+                        individuals=data,
+                        expected_num_rows=num_individuals,
                     )
                     predicted_values = interpolate_values(
                         matrix=predicted_values,
@@ -142,6 +155,7 @@ def predict_wrapper(
 
     validate_predicted_matrix(
         matrix=predicted_values,
+        individuals=data,
         expected_num_rows=num_individuals,
         expected_num_cols=number_unique_times,
     )
