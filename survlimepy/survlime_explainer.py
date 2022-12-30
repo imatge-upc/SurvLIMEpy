@@ -383,6 +383,7 @@ class SurvLimeExplainer:
         feature_names: List[str] = None,
         num_samples: int = 1000,
         num_repetitions: int = 10,
+        display_plot: bool = True,
     ) -> pd.DataFrame:
         """Generates explanations for a prediction.
         Args:
@@ -392,10 +393,10 @@ class SurvLimeExplainer:
             feature_names (List[str]): names of the features.
             num_samples (int): number of neighbours to use.
             num_repetitions (int): number of times to repeat the explanation.
+            display_plot (bool): boolean indicating whether to display the boxenplots.
         Returns:
             montecarlo_explanation (pd.DataFrame): dataframe with the montecarlo explanation.
         """
-        sns.set()
         if isinstance(data, pd.DataFrame):
             data = data.values
         all_solved = True
@@ -437,17 +438,52 @@ class SurvLimeExplainer:
         else:
             col_names = self.feature_names
         montecarlo_weights = pd.DataFrame(data=weights, columns=col_names)
-        montecarlo_weights = montecarlo_weights.reindex(
-            montecarlo_weights.mean().sort_values(ascending=False).index, axis=1
+
+        if display_plot:
+            self.display_boxenplot(data=montecarlo_weights)
+
+        return montecarlo_weights
+
+    @staticmethod
+    def display_boxenplot(data):
+        """Generates explanations for a prediction.
+        Args:
+            data (np.ndarray): data points to be displayed.
+        Returns:
+            None.
+        """
+        sns.set()
+        median_up = {}
+        median_down = {}
+        threshold = 0
+        for (columnName, columnData) in data.items():
+            median_value = np.median(columnData)
+            if median_value > threshold:
+                median_up[columnName] = median_value
+            else:
+                median_down[columnName] = median_value
+
+        median_up = dict(
+            sorted(median_up.items(), key=lambda item: item[1], reverse=True)
         )
+        median_down = dict(
+            sorted(median_down.items(), key=lambda item: item[1], reverse=True)
+        )
+        pal_up = sns.color_palette("rocket", n_colors=len(median_up))
+        pal_down = sns.color_palette("light:b", n_colors=len(median_down))
+        colors_up = {key: val for key, val in zip(median_up.keys(), pal_up)}
+        colors_down = {key: val for key, val in zip(median_down.keys(), pal_down)}
+        custom_pal = {**colors_up, **colors_down}
+        data_reindex = data.reindex(columns=custom_pal.keys())
+        data_melt = pd.melt(data_reindex)
 
         _, ax = plt.subplots(1, 1, figsize=(11, 7), sharey=True)
         ax.tick_params(labelrotation=90)
         p = sns.boxenplot(
             x="variable",
             y="value",
-            data=pd.melt(montecarlo_weights),
-            palette="RdBu",
+            data=data_melt,
+            palette=custom_pal,
             ax=ax,
         )
         ax.tick_params(labelrotation=90)
@@ -456,10 +492,8 @@ class SurvLimeExplainer:
         p.yaxis.grid(True)
         p.xaxis.grid(True)
 
-        p.set_title(f"SurvLIME values", fontsize=16, fontweight="bold")
+        p.set_title("SurvLIME values", fontsize=16, fontweight="bold")
 
         plt.xticks(fontsize=16, rotation=90)
         plt.yticks(fontsize=14, rotation=0)
         plt.show()
-
-        return montecarlo_weights
