@@ -10,7 +10,7 @@ def interpolate_values(
     unique_times_to_event: np.array,
     model_output_times: np.array,
 ) -> np.array:
-    """Transform an array of step functions to a matrix
+    """Transform an array of step functions to a matrix.
 
     Args:
         matrix (np.array): matrix with values.
@@ -35,13 +35,15 @@ def validate_predicted_matrix(
     expected_num_rows: int = None,
     expected_num_cols: int = None,
 ) -> None:
-    """Validate the output
+    """Validate the output.
 
     Args:
         matrix (np.array): matrix to validate.
         individuals (np.array): individuals to be predicted.
         expected_num_rows (int): expected number of rows.
         expected_num_cols (int): expected number of columns.
+    Returns:
+        None.
     """
     total_rows = matrix.shape[0]
     total_cols = matrix.shape[1]
@@ -51,24 +53,24 @@ def validate_predicted_matrix(
         if individuals is not None:
             idx = np.argwhere(np.isnan(matrix))
             example = str(individuals[idx[0][0], :])
-            msg = f"{msg}. Try to predict {example} array"
+            msg = f"{msg}. Try to predict {example} array."
         raise ValueError(msg)
     if expected_num_rows:
         if total_rows != expected_num_rows:
             raise ValueError(
-                f"The predicted function returns {total_rows} rows while expecting {expected_num_rows} rows"
+                f"The predicted function returns {total_rows} rows while expecting {expected_num_rows} rows."
             )
     if expected_num_cols:
         if total_cols != expected_num_cols:
             raise ValueError(
-                f"The predicted function returns {total_cols} columns while expecting {expected_num_cols} columns"
+                f"The predicted function returns {total_cols} columns while expecting {expected_num_cols} columns."
             )
 
     return None
 
 
 def transform_step_function(array_step_functions: np.array) -> np.array:
-    """Transform an array of step functions to a matrix
+    """Transform an array of step functions to a matrix.
 
     Args:
         array_step_functions (np.array): array of step functions.
@@ -91,7 +93,7 @@ def predict_wrapper(
     unique_times_to_event: np.ndarray,
     model_output_times: np.ndarray,
 ) -> np.ndarray:
-    """Return the matrix with the values predicted
+    """Return the matrix with the values predicted.
 
     Args:
         predict_fn (Callable): function that computes cumulative hazard.
@@ -100,7 +102,7 @@ def predict_wrapper(
         model_output_times (np.ndarray): output times of the bb model.
 
     Returns:
-        predicted_values(np.ndarray): predicted values
+        predicted_values(np.ndarray): predicted values.
     """
     num_individuals = data.shape[0]
     number_unique_times = unique_times_to_event.shape[0]
@@ -149,9 +151,9 @@ def predict_wrapper(
                         model_output_times=model_output_times,
                     )
             else:
-                raise NotImplemented("Unknown type of object")
+                raise NotImplemented("Unknown type of object.")
     else:
-        raise TypeError("Unknown type of object")
+        raise TypeError("Unknown type of object.")
 
     validate_predicted_matrix(
         matrix=predicted_values,

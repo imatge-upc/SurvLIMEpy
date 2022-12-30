@@ -39,20 +39,20 @@ class SurvLimeExplainer:
     ) -> None:
         """Init function.
         Args:
-            training_features (Union[np.ndarray, pd.DataFrame]): data used to train the bb model
-            training_events (List[Union[float, int]]): training events indicator
-            training_times (List[Union[bool, float, int]]): training times to event
-            model_output_times (np.ndarray): output times of the bb model
-            categorical_features (List[int]): list of integers indicating the categorical features
-            H0 (Union[np.ndarray, List[float]]): baseline cumulative hazard
-            kernel_width (float): width of the kernel to be used for computing distances
-            kernel_distance (str): metric to be used for computing neighbours distance to the original point
-            kernel_fn (Callable): kernel function to be used for computing distances
-            functional_norm (Union[float, str]): functional norm to calculate the distance between the Cox model and the black box model
-            sample_around_instance (bool): whether we sample around instances or not
-            random_state (int): number to be used for random seeds
+            training_features (Union[np.ndarray, pd.DataFrame]): data used to train the bb model.
+            training_events (List[Union[float, int]]): training events indicator.
+            training_times (List[Union[bool, float, int]]): training times to event.
+            model_output_times (np.ndarray): output times of the bb model.
+            categorical_features (List[int]): list of integers indicating the categorical features.
+            H0 (Union[np.ndarray, List[float]]): baseline cumulative hazard.
+            kernel_width (float): width of the kernel to be used for computing distances.
+            kernel_distance (str): metric to be used for computing neighbours distance to the original point.
+            kernel_fn (Callable): kernel function to be used for computing distances.
+            functional_norm (Union[float, str]): functional norm to calculate the distance between the Cox model and the black box model.
+            sample_around_instance (bool): whether we sample around instances or not.
+            random_state (int): number to be used for random seeds.
         Returns:
-            None
+            None.
         """
 
         self.random_state = check_random_state(random_state)
@@ -85,9 +85,9 @@ class SurvLimeExplainer:
                 elif total_dimensions_H0 == 2:
                     self.H0 = H0
                 else:
-                    raise ValueError("H0 must be an array of maximum 2 dimensions")
+                    raise ValueError("H0 must be an array of maximum 2 dimensions.")
             else:
-                raise ValueError("H0 must be either a list or a numpy array")
+                raise ValueError("H0 must be either a list or a numpy array.")
 
         if kernel_width is None:
             kernel_width = np.sqrt(self.training_features.shape[1]) * 0.75
@@ -118,12 +118,12 @@ class SurvLimeExplainer:
     def transform_data(
         self, data: Union[np.ndarray, pd.DataFrame]
     ) -> Union[np.ndarray, pd.DataFrame]:
-        """Transforms data according with what the model needs
+        """Transforms data according with what the model needs.
         Args:
-            data (Union[np.ndarray, pd.DataFrame]): data to be transformed
+            data (Union[np.ndarray, pd.DataFrame]): data to be transformed.
 
         Returns:
-            data_transformed (Union[np.ndarray, pd.DataFrame]): transformed data
+            data_transformed (Union[np.ndarray, pd.DataFrame]): transformed data.
         """
         if self.is_data_frame:
             data_transformed = pd.DataFrame(data, columns=self.feature_names)
@@ -143,13 +143,13 @@ class SurvLimeExplainer:
     ) -> Tuple[np.ndarray, float]:
         """Generates explanations for a prediction.
         Args:
-            data_row (Union[List[float], np.ndarray, pd.Series]): data point to be explained
-            predict_fn (Callable): function that computes cumulative hazard
-            type_fn (Literal["survival", "cumulative"]): whether predict_fn is the cumulative hazard funtion or survival function
-            num_samples (int): number of neighbours to use
-            verbose (bool): whether or not to show cvxpy messages
+            data_row (Union[List[float], np.ndarray, pd.Series]): data point to be explained.
+            predict_fn (Callable): function that computes cumulative hazard.
+            type_fn (Literal["survival", "cumulative"]): whether predict_fn is the cumulative hazard funtion or survival function.
+            num_samples (int): number of neighbours to use.
+            verbose (bool): whether or not to show cvxpy messages.
         Returns:
-            cox_values (np.ndarray): obtained weights from the convex problem
+            cox_values (np.ndarray): obtained weights from the convex problem.
         """
         # To be used while plotting
         if isinstance(data_row, list):
@@ -161,11 +161,11 @@ class SurvLimeExplainer:
             elif total_dimensions_data_row == 2:
                 self.data_point = data_row
             else:
-                raise ValueError("data_point must not have more than 2 dimensions")
+                raise ValueError("data_point must not have more than 2 dimensions.")
         elif isinstance(data_row, pd.Series):
             self.data_point = data_row.to_numpy().reshape(1, -1)
         else:
-            raise ValueError("data_point must be either a list or a numpy array")
+            raise ValueError("data_point must be either a list or a numpy array.")
 
         neighbours_generator = NeighboursGenerator(
             training_features=self.training_features,
@@ -210,19 +210,19 @@ class SurvLimeExplainer:
         norm: Union[float, str],
         verbose: bool,
     ) -> Tuple[np.ndarray, float]:
-        """Solves the convex problem proposed in: https://arxiv.org/pdf/2003.08371.pdfF
+        """Solves the convex problem proposed in: https://arxiv.org/pdf/2003.08371.pdf
         Args:
-            predict_fn (Callable): function to compute the cumulative hazard
-            type_fn (Literal["survival", "cumulative"]): whether predict_fn is the cumulative hazard funtion or survival function
-            num_samples (int): number of neighbours
-            weights (np.ndarray): distance weights computed for each data point
-            H0 (np.ndarray): baseline cumulative hazard
-            data (np.ndarray): original data point and the computed neighbours
-            norm (Union[float, str]: functional norm to calculate the distance between the Cox model and the black box model
-            verbose (bool): activate verbosity of the cvxpy solver
+            predict_fn (Callable): function to compute the cumulative hazard.
+            type_fn (Literal["survival", "cumulative"]): whether predict_fn is the cumulative hazard funtion or survival function.
+            num_samples (int): number of neighbours.
+            weights (np.ndarray): distance weights computed for each data point.
+            H0 (np.ndarray): baseline cumulative hazard.
+            data (np.ndarray): original data point and the computed neighbours.
+            norm (Union[float, str]: functional norm to calculate the distance between the Cox model and the black box model.
+            verbose (bool): activate verbosity of the cvxpy solver.
 
         Returns:
-            cox_coefficients (np.ndarray): coefficients of a COX model
+            cox_coefficients (np.ndarray): coefficients of a COX model.
         """
         epsilon = 10 ** (-6)
         num_features = data.shape[1]
@@ -242,7 +242,7 @@ class SurvLimeExplainer:
             data_np = data.to_numpy()
         else:
             raise TypeError(
-                f"Unknown data type {type(data)} only np.ndarray or pd.DataFrame allowed"
+                f"Unknown data type {type(data)} only np.ndarray or pd.DataFrame allowed."
             )
 
         # Varible to look for
@@ -254,7 +254,7 @@ class SurvLimeExplainer:
         elif type_fn == "cumulative":
             H_score = deepcopy(FN_pred)
         else:
-            raise ValueError("type_fn must be either survival or cumulative string")
+            raise ValueError("type_fn must be either survival or cumulative string.")
         log_correction = np.divide(H_score, np.log(H_score + epsilon))
         H = np.reshape(np.array(H_score), newshape=(num_samples, m))
         LnH = np.log(H + epsilon)
@@ -302,25 +302,25 @@ class SurvLimeExplainer:
         figure_path: str = None,
     ) -> None:
         # Create docstring of the function
-        """Plots the weights of the computed COX model
+        """Plots the weights of the computed COX model.
         Args:
-            figsize (Tuple[int, int]): size of the figure
-            feature_names (List[str]): names of the features
-            scale_with_data_point (bool): whether to perform the elementwise multiplication between the point to be explained and the coefficients
-            figure_path (str): path to save the figure
+            figsize (Tuple[int, int]): size of the figure.
+            feature_names (List[str]): names of the features.
+            scale_with_data_point (bool): whether to perform the elementwise multiplication between the point to be explained and the coefficients.
+            figure_path (str): path to save the figure.
         Returns:
-            None
+            None.
         """
 
         if self.computed_weights is None:
             raise ValueError(
-                "SurvLIME weights not computed yet. Call explain_instance first before using this function"
+                "SurvLIME weights not computed yet. Call explain_instance first before using this function."
             )
 
         if feature_names is not None:
             if len(feature_names) != self.computed_weights[0]:
                 raise TypeError(
-                    f"feature_names must have {self.computed_weights[0]} elements"
+                    f"feature_names must have {self.computed_weights[0]} elements."
                 )
         else:
             feature_names = self.feature_names
@@ -386,14 +386,14 @@ class SurvLimeExplainer:
     ) -> pd.DataFrame:
         """Generates explanations for a prediction.
         Args:
-            data (np.ndarray): data points to be explained
-            predict_fn (Callable): function that computes cumulative hazard
-            type_fn (Literal["survival", "cumulative"]): whether predict_fn is the cumulative hazard funtion or survival function
-            feature_names (List[str]): names of the features
-            num_samples (int): number of neighbours to use
-            num_repetitions (int): number of times to repeat the explanation
+            data (np.ndarray): data points to be explained.
+            predict_fn (Callable): function that computes cumulative hazard.
+            type_fn (Literal["survival", "cumulative"]): whether predict_fn is the cumulative hazard funtion or survival function.
+            feature_names (List[str]): names of the features.
+            num_samples (int): number of neighbours to use.
+            num_repetitions (int): number of times to repeat the explanation.
         Returns:
-            montecarlo_explanation (pd.DataFrame): dataframe with the montecarlo explanation
+            montecarlo_explanation (pd.DataFrame): dataframe with the montecarlo explanation.
         """
         sns.set()
         if isinstance(data, pd.DataFrame):
@@ -428,11 +428,11 @@ class SurvLimeExplainer:
             weights[i_row] = mean_weight_row
 
         if not all_solved:
-            logging.warning(f"There were some simulations without a solution")
+            logging.warning(f"There were some simulations without a solution.")
 
         if feature_names is not None:
             if len(feature_names) != total_cols:
-                raise TypeError(f"feature_names must have {total_cols} elements")
+                raise TypeError(f"feature_names must have {total_cols} elements.")
             col_names = feature_names
         else:
             col_names = self.feature_names

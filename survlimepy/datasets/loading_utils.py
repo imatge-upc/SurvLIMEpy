@@ -15,14 +15,14 @@ def prepare_splits(
     """Creates a random split with given sizes and random seed.
 
     Args:
-        x : pd.DataFrame: variable containing the dataset
-        y : np.ndarray: variable containing the target values
-        split_sizes: list: variable containing the percentage of the first and second split
-        random_state: int: seed of the random state to be used when splitting
+        x (pd.DataFrame): variable containing the dataset.
+        y (np.ndarray): variable containing the target values.
+        split_sizes (List): variable containing the percentage of the first and second split.
+        random_state (int): int: seed of the random state to be used when splitting.
 
     Returns:
-        X_x: pd.DataFrame: three different DataFrames with the splits' data
-        y_y: ----: three different ---- with the splits' targets
+        X_x: pd.DataFrame: three different DataFrames with the splits' data.
+        y_y: ----: three different ---- with the splits' targets.
     """
     X_train, X_test, y_train, y_test = train_test_split(
         x.copy(),
@@ -47,7 +47,6 @@ def prepare_splits(
         index=X_test.index,
     )
 
-    # print(hasattr(scaler, "n_features_in_"))
     events_train = [x[0] for x in y_train]
     times_train = [x[1] for x in y_train]
 

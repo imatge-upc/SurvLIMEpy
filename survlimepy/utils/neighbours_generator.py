@@ -13,19 +13,17 @@ class NeighboursGenerator:
         categorical_features: List[int] = None,
         random_state: int = None,
     ) -> None:
-
         """Init function.
 
         Args:
-            training_features (Union[np.ndarray, pd.DataFrame]): data used to train the bb model
-            data_row (np.ndarray): data point to be explained of shape (1 x features)
-            categorical_features (List[int]): list of integeter indicating the categorical features
-            random_state (int): number to be used for random seeds
+            training_features (Union[np.ndarray, pd.DataFrame]): data used to train the bb model.
+            data_row (np.ndarray): data point to be explained of shape (1 x features).
+            categorical_features (List[int]): list of integeter indicating the categorical features.
+            random_state (int): number to be used for random seeds.
 
         Returns:
-            None
+            None.
         """
-
         if isinstance(training_features, pd.DataFrame):
             self.training_features = training_features.to_numpy()
         elif isinstance(training_features, list):
@@ -68,12 +66,11 @@ class NeighboursGenerator:
         return {key: value for key, value in zip(keys, values)}
 
     def estimate_distribution_categorical_features(self) -> Dict:
-        """Estimates the distribution for each categorical variable
+        """Estimates the distribution for each categorical variable.
 
         Returns:
-            distribution (dict): a dictionary containing the distribution for each categorical variable
+            distribution (dict): a dictionary containing the distribution for each categorical variable.
         """
-
         distribution = {}
         total = self.training_features.shape[0]
         if self.type_features in ["mixed", "categorical"]:
@@ -86,16 +83,15 @@ class NeighboursGenerator:
     def generate_cont_neighbours(
         self, num_samples: int, sample_around_instance: bool = False
     ) -> np.ndarray:
-        """Generates a neighborhood around a prediction for continuous features
+        """Generates a neighborhood around a prediction for continuous features.
 
         Args:
-            num_samples (int): number of neighbours to generate
-            sample_around_instance (bool): whether we sample around instances or not
+            num_samples (int): number of neighbours to generate.
+            sample_around_instance (bool): whether we sample around instances or not.
 
         Returns:
-            data (np.ndarray): original data point and neighbours with shape (num_samples x features)
+            data (np.ndarray): original data point and neighbours with shape (num_samples x features).
         """
-
         # Get continuous features
         training_features_cont = self.training_features[:, self.cont_features]
 
@@ -115,15 +111,14 @@ class NeighboursGenerator:
         return neighbours
 
     def generate_cat_neighbours(self, num_samples: int) -> np.ndarray:
-        """Generates a neighborhood around a prediction for continuous features
+        """Generates a neighborhood around a prediction for continuous features.
 
         Args:
-            num_samples (int): number of neighbours to generate
+            num_samples (int): number of neighbours to generate.
 
         Returns:
-            data (np.ndarray): original data point and neighbours with shape (num_samples x features)
+            data (np.ndarray): original data point and neighbours with shape (num_samples x features).
         """
-
         # Generate distribution for categorical features
         cat_distribution = self.estimate_distribution_categorical_features()
         neighbours_list = []
@@ -149,13 +144,12 @@ class NeighboursGenerator:
         """Generates a neighborhood around a prediction.
 
         Args:
-            num_samples (int): number of neighbours to generate
-            sample_around_instance (bool): whether we sample around instances or not
+            num_samples (int): number of neighbours to generate.
+            sample_around_instance (bool): whether we sample around instances or not.
 
         Returns:
-            data (np.ndarray): original data point and neighbours with shape (num_samples x features)
+            data (np.ndarray): original data point and neighbours with shape (num_samples x features).
         """
-
         # Generate neighbours for continuous features
         if self.type_features in ["continuous", "mixed"]:
             X_neigh_cont = self.generate_cont_neighbours(

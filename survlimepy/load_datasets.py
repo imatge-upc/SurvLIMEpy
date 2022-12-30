@@ -91,16 +91,16 @@ class Loader:
             self.df = pd.read_csv(heart_path)
         else:
             raise AssertionError(
-                f"The give name {dataset_name} was not found in [veterans, udca, pbc, lung]"
+                f"The give name {dataset_name} was not found in [veterans, udca, pbc, lung]."
             )
 
     def load_data(self) -> list([pd.DataFrame, np.ndarray]):
         """
-        Loads a survival dataset
+        Loads a survival dataset.
 
         Returns:
-        x : pd.DataFrame with the unprocessed features
-        y : np.ndarray of tuples with (status, time)
+        x (pd.DataFrame): unprocessed features.
+        y (np.ndarray): tuples with (status, time).
         """
         self.df["status"] = [True if x == 1 else False for x in self.df["status"]]
         self.df["y"] = [
@@ -127,9 +127,8 @@ class Loader:
         Preprocesses the data to be used as model input.
 
         For now it only converts categorical features to OHE and
-        standarizes the data
+        standarizes the data.
         """
-
         # Deal with categorical features
         x_pre = x.copy()
         for cat_feat in self.categorical_columns:
@@ -185,7 +184,6 @@ class RandomSurvivalData:
         random_seed: int = None,
     ) -> None:
         """Init.
-
         Args:
             center (float): center of the sphere.
             radius (float): radius of the sphere.
@@ -195,8 +193,7 @@ class RandomSurvivalData:
             v_weibull (float): shape parameter of a Weibull distribution.
 
         Returns:
-            None
-
+            None.
         """
         if len(center) != len(coefficients):
             raise ValueError(
@@ -227,7 +224,6 @@ class RandomSurvivalData:
 
         Returns:
             np.ndarray: matrix with num_points rows and p columns, where p is the dimension of the space.
-
         """
         center = self.center
         radius = self.radius
@@ -264,7 +260,6 @@ class RandomSurvivalData:
 
         Returns:
             np.array: a column vector containing the survival times.
-
         """
         u = self.random_state.uniform(size=(num_points, 1))
         lamba_val = self.lambda_weibull
@@ -288,7 +283,6 @@ class RandomSurvivalData:
 
         Returns:
             np.array: a column vector containing the random events.
-
         """
         prob_event = self.prob_event
         return np.where(
@@ -306,7 +300,6 @@ class RandomSurvivalData:
                 - X: matrix with num_points rows and p columns, where p is the dimension of the space.
                 - time_to_event: a column vector containing the survival times.
                 - delta: a column vector containing the random events.
-
         """
         # Get spherical data
         X = self.spherical_data(num_points=num_points)
