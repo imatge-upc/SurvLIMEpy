@@ -218,7 +218,7 @@ class SurvLimeExplainer:
             num_samples (int): number of neighbours.
             weights (np.ndarray): distance weights computed for each data point.
             H0 (np.ndarray): baseline cumulative hazard.
-            data (np.ndarray): original data point and the computed neighbours.
+            data (np.ndarray): neighbours generated.
             norm (Union[float, str]: functional norm to calculate the distance between the Cox model and the black box model.
             verbose (bool): activate verbosity of the cvxpy solver.
 
@@ -333,9 +333,10 @@ class SurvLimeExplainer:
         _, ax = plt.subplots(figsize=figsize)
 
         # sort weights in descending order
-        sorted_weights = np.sort(weights)[0][::-1]
+        idx_sort = np.argsort(weights)[::-1]
+        sorted_weights = weights[idx_sort]
         # sort feature names so that they match the sorted weights
-        sorted_feature_names = [feature_names[i] for i in np.argsort(weights)[0][::-1]]
+        sorted_feature_names = [feature_names[i] for i in idx_sort]
 
         # divide the sorted weights and sorted feature names into positive and negative
         pos_weights = [w for w in sorted_weights if w > 0]
