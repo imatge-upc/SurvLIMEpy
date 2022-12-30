@@ -155,7 +155,6 @@ def test_montecarlo_simulation() -> None:
         predict_fn=cox.predict_cumulative_hazard_function,
         num_samples=1,
         num_repetitions=1,
-        display_plot=False,
     )
 
     assert explanations.shape == data.shape
