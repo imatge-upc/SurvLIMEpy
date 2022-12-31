@@ -13,9 +13,11 @@ from tqdm import tqdm
 from matplotlib import pyplot as plt
 from sklearn.utils import check_random_state
 from sksurv.nonparametric import nelson_aalen_estimator
+from sksurv.functions import StepFunction
 from survlimepy.utils.optimization import OptFuncionMaker
 from survlimepy.utils.neighbours_generator import NeighboursGenerator
 from survlimepy.utils.predict import predict_wrapper
+from survlimepy.utils.step_function import transform_step_function
 
 
 class SurvLimeExplainer:
@@ -29,7 +31,7 @@ class SurvLimeExplainer:
         training_times: List[Union[bool, float, int]],
         model_output_times: np.ndarray,
         categorical_features: List[int] = None,
-        H0: Union[np.ndarray, List[float]] = None,
+        H0: Union[np.ndarray, List[float], StepFunction] = None,
         kernel_width: float = None,
         kernel_distance: str = "euclidean",
         kernel_fn: Callable = None,
@@ -44,7 +46,7 @@ class SurvLimeExplainer:
             training_times (List[Union[bool, float, int]]): training times to event.
             model_output_times (np.ndarray): output times of the bb model.
             categorical_features (List[int]): list of integers indicating the categorical features.
-            H0 (Union[np.ndarray, List[float]]): baseline cumulative hazard.
+            H0 (Union[np.ndarray, List[float]], StepFunction): baseline cumulative hazard.
             kernel_width (float): width of the kernel to be used for computing distances.
             kernel_distance (str): metric to be used for computing neighbours distance to the original point.
             kernel_fn (Callable): kernel function to be used for computing distances.
@@ -60,6 +62,7 @@ class SurvLimeExplainer:
         self.training_features = training_features
         self.training_events = training_events
         self.training_times = training_times
+        self.unique_times_to_event = np.sort(np.unique(self.training_times))
         self.categorical_features = categorical_features
         self.model_output_times = model_output_times
         self.computed_weights = None
@@ -87,9 +90,18 @@ class SurvLimeExplainer:
                     self.H0 = H0
                 else:
                     raise ValueError("H0 must be an array of maximum 2 dimensions.")
+            elif isinstance(H0, StepFunction):
+                self.H0 = transform_step_function(
+                    array_step_functions=np.array([H0]), return_column_vector=True
+                )
             else:
-                raise ValueError("H0 must be either a list or a numpy array.")
+                raise ValueError("H0 must be a list, a numpy array or a StepFunction.")
 
+        m = self.unique_times_to_event.shape[0]
+        if self.H0.shape[0] != m:
+            raise ValueError(f"H0 must have {m} rows/elements.")
+        if self.H0.shape[1] != 1:
+            raise ValueError("H0 must have 1 column.")
         if kernel_width is None:
             kernel_width = np.sqrt(self.training_features.shape[1]) * 0.75
         kernel_width = float(kernel_width)
@@ -227,12 +239,11 @@ class SurvLimeExplainer:
         """
         epsilon = 10 ** (-6)
         num_features = data.shape[1]
-        unique_times_to_event = np.sort(np.unique(self.training_times))
-        m = unique_times_to_event.shape[0]
+        m = self.unique_times_to_event.shape[0]
         FN_pred = predict_wrapper(
             predict_fn=predict_fn,
             data=data,
-            unique_times_to_event=unique_times_to_event,
+            unique_times_to_event=self.unique_times_to_event,
             model_output_times=self.model_output_times,
         )
 
@@ -270,7 +281,7 @@ class SurvLimeExplainer:
 
         # Time differences
         t = np.empty(shape=(m + 1, 1))
-        t[:m, 0] = unique_times_to_event
+        t[:m, 0] = self.unique_times_to_event
         t[m, 0] = t[m - 1, 0] + epsilon
         delta_t = [t[i + 1, 0] - t[i, 0] for i in range(m)]
         delta_t = np.reshape(np.array(delta_t), newshape=(m, 1))
