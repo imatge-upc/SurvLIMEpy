@@ -3,6 +3,7 @@ import pandas as pd
 import copy
 from sksurv.functions import StepFunction
 from typing import Callable
+from survlimepy.utils.step_function import transform_step_function
 
 
 def interpolate_values(
@@ -69,24 +70,6 @@ def validate_predicted_matrix(
     return None
 
 
-def transform_step_function(array_step_functions: np.array) -> np.array:
-    """Transform an array of step functions to a matrix.
-
-    Args:
-        array_step_functions (np.array): array of step functions.
-
-    Returns:
-        matrix_values (np.array): array containing the values.
-    """
-    sample_value = array_step_functions[0]
-    total_rows = len(array_step_functions)
-    total_columns = len(sample_value.y)
-    matrix_values = np.empty(shape=(total_rows, total_columns))
-    for i, step_fn in enumerate(array_step_functions):
-        matrix_values[i] = step_fn(step_fn.x)
-    return matrix_values
-
-
 def predict_wrapper(
     predict_fn: Callable,
     data: np.ndarray,
@@ -138,7 +121,7 @@ def predict_wrapper(
         elif total_dim == 1:
             # It is a StepFunction
             if isinstance(values[0], StepFunction):
-                predicted_values = transform_step_function(values)
+                predicted_values = transform_step_function(array_step_functions=values)
                 if predicted_values.shape[1] != number_unique_times:
                     validate_predicted_matrix(
                         matrix=predicted_values,
