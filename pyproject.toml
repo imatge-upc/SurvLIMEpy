@@ -1,0 +1,52 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "survlimepy"
+version = "0.0.1"
+description = "A python package implementing SurvLIME algorithm"
+authors = [
+    {name = "Carlos Hernández Pérez", email = "crherperez95@gmail.com"},
+    {name = "Cristian Pachón García", email = "cc.pachon@gmail.com"},
+]
+readme = "README.md"
+license = {file = "LICENSE"}
+classifiers = [
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)"
+]
+requires-python = ">=3.7"
+dependencies = [
+    "numpy",
+    "cvxpy",
+    "scikit-survival",
+    "scikit-learn",
+    "pandas",
+    "tqdm",
+    "seaborn",
+    "matplotlib",
+]
+keywords = [
+    "Interpretable Machine Learning",
+    "eXplainalbe Artificial Intelligence",
+    "Survival Analysis",
+    "Machine Learning",
+    "Python",
+]
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["survlimepy"]
+
+[tool.setuptools.package-data]
+"survlimepy.datasets" = ["*.csv"]
+
+
+[project.optional-dependencies]
+dev = ["pytest", "black"]
+
+[project.urls]
+documentation = "https://github.com/imatge-upc/SurvLIMEpy"
+repository = "https://github.com/imatge-upc/SurvLIMEpy"
