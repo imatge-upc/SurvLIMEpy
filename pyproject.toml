@@ -34,6 +34,13 @@ keywords = [
     "Python",
 ]
 
+[project.optional-dependencies]
+dev = ["pytest", "black"]
+
+[project.urls]
+documentation = "https://github.com/imatge-upc/SurvLIMEpy"
+repository = "https://github.com/imatge-upc/SurvLIMEpy"
+
 [tool.setuptools]
 include-package-data = true
 
@@ -42,11 +49,3 @@ where = ["survlimepy"]
 
 [tool.setuptools.package-data]
 "survlimepy.datasets" = ["*.csv"]
-
-
-[project.optional-dependencies]
-dev = ["pytest", "black"]
-
-[project.urls]
-documentation = "https://github.com/imatge-upc/SurvLIMEpy"
-repository = "https://github.com/imatge-upc/SurvLIMEpy"
