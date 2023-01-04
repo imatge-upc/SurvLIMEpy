@@ -153,7 +153,7 @@ class SurvLimeExplainer:
         type_fn: Literal["survival", "cumulative"] = "cumulative",
         num_samples: int = 1000,
         verbose: bool = False,
-    ) -> Tuple[np.ndarray, float]:
+    ) -> np.ndarray:
         """Generates explanations for a prediction.
         Args:
             data_row (Union[List[float], np.ndarray, pd.Series]): data point to be explained.
@@ -169,16 +169,19 @@ class SurvLimeExplainer:
             self.data_point = np.array(data_row).reshape(1, -1)
         elif isinstance(data_row, np.ndarray):
             total_dimensions_data_row = len(data_row.shape)
+            total_rows = data_row.shape[0]
             if total_dimensions_data_row == 1:
                 self.data_point = np.reshape(data_row, newshape=(1, -1))
             elif total_dimensions_data_row == 2:
+                if total_rows > 1:
+                    raise ValueError("data_point must contain a single row.")
                 self.data_point = data_row
             else:
                 raise ValueError("data_point must not have more than 2 dimensions.")
         elif isinstance(data_row, pd.Series):
             self.data_point = data_row.to_numpy().reshape(1, -1)
         else:
-            raise ValueError("data_point must be either a list or a numpy array.")
+            raise ValueError("data_point must be a list, a numpy array or a pandas Series.")
 
         neighbours_generator = NeighboursGenerator(
             training_features=self.training_features,
@@ -390,7 +393,7 @@ class SurvLimeExplainer:
 
     def montecarlo_explanation(
         self,
-        data: Union[np.ndarray, pd.DataFrame],
+        data: Union[pd.DataFrame, pd.Series, np.ndarray, List],
         predict_fn: Callable,
         type_fn: Literal["survival", "cumulative"] = "cumulative",
         num_samples: int = 1000,
@@ -398,7 +401,7 @@ class SurvLimeExplainer:
     ) -> pd.DataFrame:
         """Generates explanations for a prediction.
         Args:
-            data (np.ndarray): data points to be explained.
+            data (Union[pd.DataFrame, pd.Series, np.ndarray, List]): data points to be explained.
             predict_fn (Callable): function that computes cumulative hazard.
             type_fn (Literal["survival", "cumulative"]): whether predict_fn is the cumulative hazard funtion or survival function.
             num_samples (int): number of neighbours to use.
@@ -407,14 +410,27 @@ class SurvLimeExplainer:
             montecarlo_explanation (pd.DataFrame): dataframe with the montecarlo explanation.
         """
         if isinstance(data, pd.DataFrame):
-            data = data.values
-        self.matrix_to_explain = np.copy(data)
+            data_transformed = data.values
+        elif isinstance(data, pd.Series):
+            data_transformed = data.to_numpy().reshape(1, -1)
+        elif isinstance(data, np.ndarray):
+            n_dim = len(data.shape)
+            if n_dim == 1:
+                n_rows = 1
+            else:
+                n_rows = data.shape[0]
+            data_transformed = np.reshape(data, newshape=(n_rows, -1))
+        elif isinstance(data, list):
+             data_transformed = np.array(data).reshape(1, -1)
+        else:
+            raise ValueError("data must be a pandas DataFrame, a pandas Series, a numpy array or a list.")
+        self.matrix_to_explain = deepcopy(data_transformed)
         all_solved = True
-        total_rows = data.shape[0]
-        total_cols = data.shape[1]
+        total_rows = data_transformed.shape[0]
+        total_cols = data_transformed.shape[1]
         weights = np.empty(shape=(total_rows, total_cols))
         for i_row in tqdm(range(total_rows)):
-            current_row = data[i_row]
+            current_row = data_transformed[i_row]
             weights_current_row = []
             for _ in range(num_repetitions):
                 # sample data point from the dataset
