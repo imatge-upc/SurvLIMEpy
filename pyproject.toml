@@ -49,3 +49,7 @@ where = ["survlimepy"]
 
 [tool.setuptools.package-data]
 "survlimepy.datasets" = ["*.csv"]
+
+[tool.black]
+line-length = 88
+skip-string-normalization = true
