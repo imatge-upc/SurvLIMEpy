@@ -87,6 +87,8 @@ class SurvLimeExplainer:
                 if total_dimensions_H0 == 1:
                     self.H0 = np.reshape(H0, newshape=(-1, 1))
                 elif total_dimensions_H0 == 2:
+                    if self.H0.shape[1] > 1:
+                        raise ValueError("H0 must contain a single column.")
                     self.H0 = H0
                 else:
                     raise ValueError("H0 must be an array of maximum 2 dimensions.")
@@ -152,6 +154,8 @@ class SurvLimeExplainer:
         predict_fn: Callable,
         type_fn: Literal["survival", "cumulative"] = "cumulative",
         num_samples: int = 1000,
+        max_difference_time_allowed: float = None,
+        max_hazard_value_allowed: float = None,
         verbose: bool = False,
     ) -> np.ndarray:
         """Generates explanations for a prediction.
@@ -160,6 +164,8 @@ class SurvLimeExplainer:
             predict_fn (Callable): function that computes cumulative hazard.
             type_fn (Literal["survival", "cumulative"]): whether predict_fn is the cumulative hazard funtion or survival function.
             num_samples (int): number of neighbours to use.
+            max_difference_time_allowed (float): maximum difference between times allowed. If a difference exceeds this value, then max_difference_time_allowed will be used.
+            max_hazard_value_allowed (float): maximum hazard value allowed. If a prediction exceeds this value, then max_hazard_value_allows will be used.
             verbose (bool): whether or not to show cvxpy messages.
         Returns:
             cox_values (np.ndarray): obtained weights from the convex problem.
@@ -181,7 +187,9 @@ class SurvLimeExplainer:
         elif isinstance(data_row, pd.Series):
             self.data_point = data_row.to_numpy().reshape(1, -1)
         else:
-            raise ValueError("data_point must be a list, a numpy array or a pandas Series.")
+            raise ValueError(
+                "data_point must be a list, a numpy array or a pandas Series."
+            )
 
         neighbours_generator = NeighboursGenerator(
             training_features=self.training_features,
@@ -211,6 +219,8 @@ class SurvLimeExplainer:
             H0=self.H0,
             data=scaled_data_transformed,
             norm=self.functional_norm,
+            max_difference_time_allowed=max_difference_time_allowed,
+            max_hazard_value_allowed=max_hazard_value_allowed,
             verbose=verbose,
         )
         return cox_values
@@ -224,6 +234,8 @@ class SurvLimeExplainer:
         H0: np.ndarray,
         data: np.ndarray,
         norm: Union[float, str],
+        max_difference_time_allowed: float,
+        max_hazard_value_allowed: float,
         verbose: bool,
     ) -> Tuple[np.ndarray, float]:
         """Solves the convex problem proposed in: https://arxiv.org/pdf/2003.08371.pdf
@@ -235,12 +247,15 @@ class SurvLimeExplainer:
             H0 (np.ndarray): baseline cumulative hazard.
             data (np.ndarray): neighbours generated.
             norm (Union[float, str]: functional norm to calculate the distance between the Cox model and the black box model.
+            max_difference_time_allowed (float): maximum difference between times allowed. If a difference exceeds this value, then max_difference_time_allowed will be used.
+            max_hazard_value_allowed (float): maximum hazard value allowed. If a prediction exceeds this value, then max_hazard_value_allows will be used.
             verbose (bool): activate verbosity of the cvxpy solver.
 
         Returns:
             cox_coefficients (np.ndarray): coefficients of a COX model.
         """
         epsilon = 10 ** (-6)
+        limit_H_value = 50
         num_features = data.shape[1]
         m = self.unique_times_to_event.shape[0]
         FN_pred = predict_wrapper(
@@ -249,6 +264,13 @@ class SurvLimeExplainer:
             unique_times_to_event=self.unique_times_to_event,
             model_output_times=self.model_output_times,
         )
+        if max_difference_time_allowed is not None:
+            if max_difference_time_allowed < 0:
+                raise ValueError("max_difference_time_allowed must be positive.")
+
+        if max_hazard_value_allowed is not None:
+            if max_hazard_value_allowed < 0:
+                raise ValueError("max_hazard_value_allowed must be positive.")
 
         # From now on, original data must be a numpy array
         if isinstance(data, np.ndarray):
@@ -270,6 +292,13 @@ class SurvLimeExplainer:
             H_score = deepcopy(FN_pred)
         else:
             raise ValueError("type_fn must be either survival or cumulative string.")
+        max_H_score = np.max(H_score)
+        if max_hazard_value_allowed is None and max_H_score > limit_H_value:
+            logging.warning(
+                f"The prediction function produces extreme values: {max_H_score}. In terms of survival, Pr(Survival) is almost 0. Try to set max_hazard_value_allowed parameter to clip this value."
+            )
+        if max_hazard_value_allowed is not None:
+            H_score = np.clip(a=H_score, a_min=None, a_max=max_hazard_value_allowed)
         log_correction = np.divide(H_score, np.log(H_score + epsilon))
         H = np.reshape(np.array(H_score), newshape=(num_samples, m))
         LnH = np.log(H + epsilon)
@@ -288,6 +317,8 @@ class SurvLimeExplainer:
         t[m, 0] = t[m - 1, 0] + epsilon
         delta_t = [t[i + 1, 0] - t[i, 0] for i in range(m)]
         delta_t = np.reshape(np.array(delta_t), newshape=(m, 1))
+        if max_difference_time_allowed is not None:
+            delta_t = np.clip(a=delta_t, a_min=None, a_max=max_difference_time_allowed)
 
         # Matrices to produce the proper sizes
         ones_N = np.ones(shape=(num_samples, 1))
@@ -303,10 +334,13 @@ class SurvLimeExplainer:
 
         objective = cp.Minimize(funct)
         prob = cp.Problem(objective)
-        result = prob.solve(verbose=verbose)
-        cox_coefficients = b.value[:, 0]
-
-        self.computed_weights = cox_coefficients
+        prob.solve(verbose=verbose)
+        if prob.status not in ["infeasible", "unbounded"]:
+            cox_coefficients = b.value[:, 0]
+            self.computed_weights = cox_coefficients
+        else:
+            cox_coefficients = None
+            logging.warning(f"The optimisation problem is {prob.status}")
         return cox_coefficients
 
     def plot_weights(
@@ -398,6 +432,9 @@ class SurvLimeExplainer:
         type_fn: Literal["survival", "cumulative"] = "cumulative",
         num_samples: int = 1000,
         num_repetitions: int = 10,
+        max_difference_time_allowed: float = None,
+        max_hazard_value_allowed: float = None,
+        verbose: bool = True,
     ) -> pd.DataFrame:
         """Generates explanations for a prediction.
         Args:
@@ -406,6 +443,9 @@ class SurvLimeExplainer:
             type_fn (Literal["survival", "cumulative"]): whether predict_fn is the cumulative hazard funtion or survival function.
             num_samples (int): number of neighbours to use.
             num_repetitions (int): number of times to repeat the explanation.
+            max_difference_time_allowed (float): maximum difference between times allowed. If a difference exceeds this value, then max_difference_time_allowed will be used.
+            max_hazard_value_allowed (float): maximum hazard value allowed. If a prediction exceeds this value, then max_hazard_value_allows will be used.
+            verbose (bool): whether or not to show cvxpy messages.
         Returns:
             montecarlo_explanation (pd.DataFrame): dataframe with the montecarlo explanation.
         """
@@ -421,9 +461,11 @@ class SurvLimeExplainer:
                 n_rows = data.shape[0]
             data_transformed = np.reshape(data, newshape=(n_rows, -1))
         elif isinstance(data, list):
-             data_transformed = np.array(data).reshape(1, -1)
+            data_transformed = np.array(data).reshape(1, -1)
         else:
-            raise ValueError("data must be a pandas DataFrame, a pandas Series, a numpy array or a list.")
+            raise ValueError(
+                "data must be a pandas DataFrame, a pandas Series, a numpy array or a list."
+            )
         self.matrix_to_explain = deepcopy(data_transformed)
         all_solved = True
         total_rows = data_transformed.shape[0]
@@ -440,9 +482,14 @@ class SurvLimeExplainer:
                         predict_fn=predict_fn,
                         type_fn=type_fn,
                         num_samples=num_samples,
-                        verbose=False,
+                        max_difference_time_allowed=max_difference_time_allowed,
+                        max_hazard_value_allowed=max_hazard_value_allowed,
+                        verbose=verbose,
                     )
-                    weights_current_row.append(b)
+                    if b is not None:
+                        weights_current_row.append(b)
+                    else:
+                        all_solved = False
                 except (
                     cp.error.DCPError,
                     cp.error.DGPError,
@@ -455,7 +502,9 @@ class SurvLimeExplainer:
             weights[i_row] = mean_weight_row
 
         if not all_solved:
-            logging.warning(f"There were some simulations without a solution.")
+            logging.warning(
+                "There were some simulations without a solution. Try to run it with verbose=True."
+            )
         self.montecarlo_weights = weights
         return weights
 
