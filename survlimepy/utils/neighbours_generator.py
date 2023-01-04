@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from typing import List, Dict, Union
+from typing import List, Dict, Union, Optional
 
 
 class NeighboursGenerator:
@@ -10,16 +10,16 @@ class NeighboursGenerator:
         self,
         training_features: Union[np.ndarray, pd.DataFrame],
         data_row: np.ndarray,
-        categorical_features: List[int] = None,
-        random_state: int = None,
+        categorical_features: Optional[List[int]] = None,
+        random_state: Optional[int] = None,
     ) -> None:
         """Init function.
 
         Args:
             training_features (Union[np.ndarray, pd.DataFrame]): data used to train the bb model.
             data_row (np.ndarray): data point to be explained of shape (1 x features).
-            categorical_features (List[int]): list of integeter indicating the categorical features.
-            random_state (int): number to be used for random seeds.
+            categorical_features (Optional[List[int]]): list of integeter indicating the categorical features.
+            random_state (Optional[int]): number to be used for random seeds.
 
         Returns:
             None.

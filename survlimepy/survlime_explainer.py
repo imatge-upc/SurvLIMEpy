@@ -1,7 +1,7 @@
 from functools import partial
 import logging
 from copy import deepcopy
-from typing import Callable, Tuple, Union, List, Literal
+from typing import Callable, Tuple, Union, List, Literal, Optional
 import numpy as np
 import pandas as pd
 import cvxpy as cp
@@ -30,14 +30,14 @@ class SurvLimeExplainer:
         training_events: List[Union[float, int]],
         training_times: List[Union[bool, float, int]],
         model_output_times: np.ndarray,
-        categorical_features: List[int] = None,
-        H0: Union[np.ndarray, List[float], StepFunction] = None,
-        kernel_width: float = None,
+        categorical_features: Optional[List[int]] = None,
+        H0: Optional[Union[np.ndarray, List[float], StepFunction]] = None,
+        kernel_width: Optional[float] = None,
         kernel_distance: str = "euclidean",
-        kernel_fn: Callable = None,
-        functional_norm: Union[float, str] = 2,
+        kernel_fn: Optional[Callable] = None,
+        functional_norm: Optional[Union[float, str]] = 2,
         sample_around_instance: bool = False,
-        random_state: int = None,
+        random_state: Optional[int] = None,
     ) -> None:
         """Init function.
         Args:
@@ -45,14 +45,14 @@ class SurvLimeExplainer:
             training_events (List[Union[float, int]]): training events indicator.
             training_times (List[Union[bool, float, int]]): training times to event.
             model_output_times (np.ndarray): output times of the bb model.
-            categorical_features (List[int]): list of integers indicating the categorical features.
-            H0 (Union[np.ndarray, List[float]], StepFunction): baseline cumulative hazard.
-            kernel_width (float): width of the kernel to be used for computing distances.
+            categorical_features (Optional[List[int]]): list of integers indicating the categorical features.
+            H0 (Optional[Union[np.ndarray, List[float], StepFunction]]): baseline cumulative hazard.
+            kernel_width (Optional[List[float]]): width of the kernel to be used for computing distances.
             kernel_distance (str): metric to be used for computing neighbours distance to the original point.
-            kernel_fn (Callable): kernel function to be used for computing distances.
-            functional_norm (Union[float, str]): functional norm to calculate the distance between the Cox model and the black box model.
+            kernel_fn (Optional[Callable]): kernel function to be used for computing distances.
+            functional_norm (Optional[Union[float, str]]): functional norm to calculate the distance between the Cox model and the black box model.
             sample_around_instance (bool): whether we sample around instances or not.
-            random_state (int): number to be used for random seeds.
+            random_state (Optional[int]): number to be used for random seeds.
         Returns:
             None.
         """
@@ -154,8 +154,8 @@ class SurvLimeExplainer:
         predict_fn: Callable,
         type_fn: Literal["survival", "cumulative"] = "cumulative",
         num_samples: int = 1000,
-        max_difference_time_allowed: float = None,
-        max_hazard_value_allowed: float = None,
+        max_difference_time_allowed: Optional[float] = None,
+        max_hazard_value_allowed: Optional[float] = None,
         verbose: bool = False,
     ) -> np.ndarray:
         """Generates explanations for a prediction.
@@ -164,8 +164,8 @@ class SurvLimeExplainer:
             predict_fn (Callable): function that computes cumulative hazard.
             type_fn (Literal["survival", "cumulative"]): whether predict_fn is the cumulative hazard funtion or survival function.
             num_samples (int): number of neighbours to use.
-            max_difference_time_allowed (float): maximum difference between times allowed. If a difference exceeds this value, then max_difference_time_allowed will be used.
-            max_hazard_value_allowed (float): maximum hazard value allowed. If a prediction exceeds this value, then max_hazard_value_allows will be used.
+            max_difference_time_allowed (Optional[float]): maximum difference between times allowed. If a difference exceeds this value, then max_difference_time_allowed will be used.
+            max_hazard_value_allowed (Optional[float]): maximum hazard value allowed. If a prediction exceeds this value, then max_hazard_value_allows will be used.
             verbose (bool): whether or not to show cvxpy messages.
         Returns:
             cox_values (np.ndarray): obtained weights from the convex problem.
@@ -346,17 +346,17 @@ class SurvLimeExplainer:
     def plot_weights(
         self,
         figsize: Tuple[int, int] = (10, 10),
-        feature_names: List[str] = None,
+        feature_names: Optional[List[str]] = None,
         scale_with_data_point: bool = False,
-        figure_path: str = None,
+        figure_path: Optional[str] = None,
     ) -> None:
         # Create docstring of the function
         """Plots the weights of the computed COX model.
         Args:
             figsize (Tuple[int, int]): size of the figure.
-            feature_names (List[str]): names of the features.
+            feature_names (Optional[List[str]]): names of the features.
             scale_with_data_point (bool): whether to perform the elementwise multiplication between the point to be explained and the coefficients.
-            figure_path (str): path to save the figure.
+            figure_path (Optional[str]): path to save the figure.
         Returns:
             None.
         """
@@ -432,8 +432,8 @@ class SurvLimeExplainer:
         type_fn: Literal["survival", "cumulative"] = "cumulative",
         num_samples: int = 1000,
         num_repetitions: int = 10,
-        max_difference_time_allowed: float = None,
-        max_hazard_value_allowed: float = None,
+        max_difference_time_allowed: Optional[float] = None,
+        max_hazard_value_allowed: Optional[float] = None,
         verbose: bool = True,
     ) -> pd.DataFrame:
         """Generates explanations for a prediction.
@@ -443,8 +443,8 @@ class SurvLimeExplainer:
             type_fn (Literal["survival", "cumulative"]): whether predict_fn is the cumulative hazard funtion or survival function.
             num_samples (int): number of neighbours to use.
             num_repetitions (int): number of times to repeat the explanation.
-            max_difference_time_allowed (float): maximum difference between times allowed. If a difference exceeds this value, then max_difference_time_allowed will be used.
-            max_hazard_value_allowed (float): maximum hazard value allowed. If a prediction exceeds this value, then max_hazard_value_allows will be used.
+            max_difference_time_allowed (Optional[float]): maximum difference between times allowed. If a difference exceeds this value, then max_difference_time_allowed will be used.
+            max_hazard_value_allowed (Optional[float]): maximum hazard value allowed. If a prediction exceeds this value, then max_hazard_value_allows will be used.
             verbose (bool): whether or not to show cvxpy messages.
         Returns:
             montecarlo_explanation (pd.DataFrame): dataframe with the montecarlo explanation.
@@ -511,16 +511,16 @@ class SurvLimeExplainer:
     def plot_montecarlo_weights(
         self,
         figsize: Tuple[int, int] = (10, 10),
-        feature_names: List[str] = None,
+        feature_names: Optional[List[str]] = None,
         scale_with_data_point: bool = False,
-        figure_path: str = None,
+        figure_path: Optional[str] = None,
     ) -> None:
         """Generates explanations for a prediction.
         Args:
             figsize (Tuple[int, int]): size of the figure.
-            feature_names (List[str]): names of the features.
+            feature_names Optional[List[str]]): names of the features.
             scale_with_data_point (bool): whether to perform the elementwise multiplication between the point to be explained and the coefficients.
-            figure_path (str): path to save the figure.
+            figure_path (Optional[str]): path to save the figure.
         Returns:
             None.
         """

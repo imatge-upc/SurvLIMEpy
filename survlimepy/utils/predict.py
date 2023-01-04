@@ -2,24 +2,24 @@ import numpy as np
 import pandas as pd
 import copy
 from sksurv.functions import StepFunction
-from typing import Callable
+from typing import Callable, Optional
 from survlimepy.utils.step_function import transform_step_function
 
 
 def interpolate_values(
-    matrix: np.array,
-    unique_times_to_event: np.array,
-    model_output_times: np.array,
-) -> np.array:
+    matrix: np.ndarray,
+    unique_times_to_event: np.ndarray,
+    model_output_times: np.ndarray,
+) -> np.ndarray:
     """Transform an array of step functions to a matrix.
 
     Args:
-        matrix (np.array): matrix with values.
-        unique_times_to_event (np.array): unique times to event.
-        model_output_times (np.array): times considered by teh model.
+        matrix (np.ndarray): matrix with values.
+        unique_times_to_event (np.ndarray): unique times to event.
+        model_output_times (np.ndarray): times considered by teh model.
 
     Returns:
-        interpolated_matrix (np.array): array containing the values.
+        interpolated_matrix (np.ndarray): array containing the values.
     """
     interpolated_matrix = np.array(
         [
@@ -31,18 +31,18 @@ def interpolate_values(
 
 
 def validate_predicted_matrix(
-    matrix: np.array,
-    individuals: np.array = None,
-    expected_num_rows: int = None,
-    expected_num_cols: int = None,
+    matrix: np.ndarray,
+    individuals: Optional[np.ndarray] = None,
+    expected_num_rows: Optional[int] = None,
+    expected_num_cols: Optional[int] = None,
 ) -> None:
     """Validate the output.
 
     Args:
-        matrix (np.array): matrix to validate.
-        individuals (np.array): individuals to be predicted.
-        expected_num_rows (int): expected number of rows.
-        expected_num_cols (int): expected number of columns.
+        matrix (np.ndarray): matrix to validate.
+        individuals (Optional[np.ndarray]): individuals to be predicted.
+        expected_num_rows (Optional[int]): expected number of rows.
+        expected_num_cols (Optional[int]): expected number of columns.
     Returns:
         None.
     """
