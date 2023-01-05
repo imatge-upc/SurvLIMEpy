@@ -43,6 +43,7 @@ def validate_predicted_matrix(
         individuals (Optional[np.ndarray]): individuals to be predicted.
         expected_num_rows (Optional[int]): expected number of rows.
         expected_num_cols (Optional[int]): expected number of columns.
+
     Returns:
         None.
     """
