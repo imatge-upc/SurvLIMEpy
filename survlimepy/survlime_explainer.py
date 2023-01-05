@@ -202,7 +202,6 @@ class SurvLimeExplainer:
             )
         else:
             are_there_any_nan = np.isnan(self.computed_weights).any()
-            print(self.computed_weights)
             if are_there_any_nan:
                 raise ValueError("Some of the coefficients contain nan values.")
 
