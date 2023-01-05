@@ -133,7 +133,7 @@ class OptFuncionMaker:
         if self.H0.shape[1] != 1:
             raise ValueError("H0 must have 1 column.")
 
-        self.limit_H_warning = 50
+        self.limit_H_warning = 500
         self.epsilon = 10 ** (-6)
 
     @staticmethod
