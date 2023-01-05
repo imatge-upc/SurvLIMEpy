@@ -202,6 +202,7 @@ class SurvLimeExplainer:
             )
         else:
             are_there_any_nan = np.isnan(self.computed_weights).any
+            print(self.computed_weights)
             if are_there_any_nan:
                 raise ValueError("Some of the coefficients contain nan values.")
 
@@ -368,7 +369,7 @@ class SurvLimeExplainer:
                 "Monte-Carlo weights not computed yet. Call montecarlo_explanation first before using this function."
             )
         else:
-            are_there_any_nan = np.isnan(self.montecarlo_weights).any
+            are_there_any_nan = np.isnan(self.montecarlo_weights).any()
             if are_there_any_nan:
                 raise ValueError("Some of the coefficients contain nan values.")
 
