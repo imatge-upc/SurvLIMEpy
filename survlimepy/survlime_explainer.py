@@ -201,7 +201,7 @@ class SurvLimeExplainer:
                 "SurvLIME weights not computed yet. Call explain_instance first before using this function."
             )
         else:
-            are_there_any_nan = np.isnan(self.computed_weights).any
+            are_there_any_nan = np.isnan(self.computed_weights).any()
             print(self.computed_weights)
             if are_there_any_nan:
                 raise ValueError("Some of the coefficients contain nan values.")
