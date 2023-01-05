@@ -86,7 +86,7 @@ def test_categorical_features() -> None:
     }
 
     df = pd.DataFrame(data)
-    data_row = df.loc[0].to_numpy()
+    data_row = df.loc[0].to_numpy().reshape(1, -1)
 
     neighbours_generator = NeighboursGenerator(
         training_features=df,
@@ -146,7 +146,6 @@ def test_montecarlo_simulation() -> None:
         training_events=[tp[0] for tp in y],
         training_times=[tp[1] for tp in y],
         model_output_times=cox.event_times_,
-        sample_around_instance=True,
         random_state=10,
     )
 
