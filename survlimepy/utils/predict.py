@@ -55,7 +55,7 @@ def validate_predicted_matrix(
         if individuals is not None:
             idx = np.argwhere(np.isnan(matrix))
             example = str(individuals[idx[0][0], :])
-            msg = f"{msg}. Try to predict {example} array."
+            msg = f"{msg} Try to predict {example} array."
         raise ValueError(msg)
     if expected_num_rows:
         if total_rows != expected_num_rows:
