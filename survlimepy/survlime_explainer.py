@@ -4,25 +4,17 @@ from copy import deepcopy
 from typing import Callable, Tuple, Union, List, Literal, Optional
 import numpy as np
 import pandas as pd
-import cvxpy as cp
-import sklearn
-import sklearn.preprocessing
-import pandas as pd
 import seaborn as sns
 from tqdm import tqdm
 from matplotlib import pyplot as plt
 from sklearn.utils import check_random_state
-from sksurv.nonparametric import nelson_aalen_estimator
 from sksurv.functions import StepFunction
-from survlimepy.utils.optimization import OptFuncionMaker
+from survlimepy.utils.optimisation import OptFuncionMaker
 from survlimepy.utils.neighbours_generator import NeighboursGenerator
-from survlimepy.utils.predict import predict_wrapper
-from survlimepy.utils.step_function import transform_step_function
 
 
 class SurvLimeExplainer:
-    """
-    Look for the coefficient of a COX model."""
+    """Look for the coefficient of a COX model."""
 
     def __init__(
         self,
@@ -35,11 +27,11 @@ class SurvLimeExplainer:
         kernel_width: Optional[float] = None,
         kernel_distance: str = "euclidean",
         kernel_fn: Optional[Callable] = None,
-        functional_norm: Optional[Union[float, str]] = 2,
-        sample_around_instance: bool = False,
+        functional_norm: Union[float, str] = 2,
         random_state: Optional[int] = None,
     ) -> None:
         """Init function.
+
         Args:
             training_features (Union[np.ndarray, pd.DataFrame]): data used to train the bb model.
             training_events (List[Union[float, int]]): training events indicator.
@@ -51,18 +43,15 @@ class SurvLimeExplainer:
             kernel_distance (str): metric to be used for computing neighbours distance to the original point.
             kernel_fn (Optional[Callable]): kernel function to be used for computing distances.
             functional_norm (Optional[Union[float, str]]): functional norm to calculate the distance between the Cox model and the black box model.
-            sample_around_instance (bool): whether we sample around instances or not.
             random_state (Optional[int]): number to be used for random seeds.
+
         Returns:
             None.
         """
-
         self.random_state = check_random_state(random_state)
-        self.sample_around_instance = sample_around_instance
         self.training_features = training_features
         self.training_events = training_events
         self.training_times = training_times
-        self.unique_times_to_event = np.sort(np.unique(self.training_times))
         self.categorical_features = categorical_features
         self.model_output_times = model_output_times
         self.computed_weights = None
@@ -74,36 +63,8 @@ class SurvLimeExplainer:
             self.feature_names = [
                 f"feature_{i}" for i in range(self.training_features.shape[1])
             ]
+        self.H0 = H0
 
-        if H0 is None:
-            self.H0 = self.compute_nelson_aalen_estimator(
-                self.training_events, self.training_times
-            )
-        else:
-            if isinstance(H0, list):
-                self.H0 = np.array(H0).reshape(-1, 1)
-            elif isinstance(H0, np.ndarray):
-                total_dimensions_H0 = len(H0.shape)
-                if total_dimensions_H0 == 1:
-                    self.H0 = np.reshape(H0, newshape=(-1, 1))
-                elif total_dimensions_H0 == 2:
-                    if self.H0.shape[1] > 1:
-                        raise ValueError("H0 must contain a single column.")
-                    self.H0 = H0
-                else:
-                    raise ValueError("H0 must be an array of maximum 2 dimensions.")
-            elif isinstance(H0, StepFunction):
-                self.H0 = transform_step_function(
-                    array_step_functions=np.array([H0]), return_column_vector=True
-                )
-            else:
-                raise ValueError("H0 must be a list, a numpy array or a StepFunction.")
-
-        m = self.unique_times_to_event.shape[0]
-        if self.H0.shape[0] != m:
-            raise ValueError(f"H0 must have {m} rows/elements.")
-        if self.H0.shape[1] != 1:
-            raise ValueError("H0 must have 1 column.")
         if kernel_width is None:
             kernel_width = np.sqrt(self.training_features.shape[1]) * 0.75
         kernel_width = float(kernel_width)
@@ -117,23 +78,12 @@ class SurvLimeExplainer:
 
         self.kernel_fn = partial(kernel_fn, kernel_width=kernel_width)
         self.functional_norm = functional_norm
-        self.scaler = sklearn.preprocessing.StandardScaler(with_mean=False)
-        self.scaler.fit(self.training_features)
-
-    @staticmethod
-    def compute_nelson_aalen_estimator(
-        event: np.ndarray, time: np.ndarray
-    ) -> np.ndarray:
-        nelson_aalen = nelson_aalen_estimator(event, time)
-        H0 = nelson_aalen[1]
-        m = H0.shape[0]
-        H0 = np.reshape(H0, newshape=(m, 1))
-        return H0
 
     def transform_data(
         self, data: Union[np.ndarray, pd.DataFrame]
     ) -> Union[np.ndarray, pd.DataFrame]:
         """Transforms data according with what the model needs.
+
         Args:
             data (Union[np.ndarray, pd.DataFrame]): data to be transformed.
 
@@ -159,6 +109,7 @@ class SurvLimeExplainer:
         verbose: bool = False,
     ) -> np.ndarray:
         """Generates explanations for a prediction.
+
         Args:
             data_row (Union[List[float], np.ndarray, pd.Series]): data point to be explained.
             predict_fn (Callable): function that computes cumulative hazard.
@@ -167,6 +118,7 @@ class SurvLimeExplainer:
             max_difference_time_allowed (Optional[float]): maximum difference between times allowed. If a difference exceeds this value, then max_difference_time_allowed will be used.
             max_hazard_value_allowed (Optional[float]): maximum hazard value allowed. If a prediction exceeds this value, then max_hazard_value_allows will be used.
             verbose (bool): whether or not to show cvxpy messages.
+
         Returns:
             cox_values (np.ndarray): obtained weights from the convex problem.
         """
@@ -191,6 +143,7 @@ class SurvLimeExplainer:
                 "data_point must be a list, a numpy array or a pandas Series."
             )
 
+        # Generate neighbours
         neighbours_generator = NeighboursGenerator(
             training_features=self.training_features,
             data_row=self.data_point,
@@ -198,150 +151,31 @@ class SurvLimeExplainer:
             random_state=self.random_state,
         )
 
-        scaled_data = neighbours_generator.generate_neighbours(
-            num_samples=num_samples, sample_around_instance=self.sample_around_instance
-        )
-
+        scaled_data = neighbours_generator.generate_neighbours(num_samples=num_samples)
         scaled_data_transformed = self.transform_data(data=scaled_data)
 
-        distances = sklearn.metrics.pairwise_distances(
-            scaled_data, self.data_point, metric=self.kernel_distance
-        ).ravel()
-
-        weights = self.kernel_fn(distances)
-
-        # Solution for the optimisation problems
-        cox_values = self.solve_opt_problem(
+        # Solve optimisation problem
+        opt_funcion_maker = OptFuncionMaker(
+            training_times=self.training_times,
+            training_events=self.training_events,
+            neighbours=scaled_data,
+            neighbours_transformed=scaled_data_transformed,
+            num_samples=num_samples,
+            data_point=self.data_point,
+            kernel_distance=self.kernel_distance,
+            kernel_fn=self.kernel_fn,
             predict_fn=predict_fn,
             type_fn=type_fn,
-            num_samples=num_samples,
-            weights=weights,
+            model_output_times=self.model_output_times,
+            functional_norm=self.functional_norm,
             H0=self.H0,
-            data=scaled_data_transformed,
-            norm=self.functional_norm,
             max_difference_time_allowed=max_difference_time_allowed,
             max_hazard_value_allowed=max_hazard_value_allowed,
             verbose=verbose,
         )
-        return cox_values
-
-    def solve_opt_problem(
-        self,
-        predict_fn: Callable,
-        type_fn: Literal["survival", "cumulative"],
-        num_samples: int,
-        weights: np.ndarray,
-        H0: np.ndarray,
-        data: np.ndarray,
-        norm: Union[float, str],
-        max_difference_time_allowed: float,
-        max_hazard_value_allowed: float,
-        verbose: bool,
-    ) -> Tuple[np.ndarray, float]:
-        """Solves the convex problem proposed in: https://arxiv.org/pdf/2003.08371.pdf
-        Args:
-            predict_fn (Callable): function to compute the cumulative hazard.
-            type_fn (Literal["survival", "cumulative"]): whether predict_fn is the cumulative hazard funtion or survival function.
-            num_samples (int): number of neighbours.
-            weights (np.ndarray): distance weights computed for each data point.
-            H0 (np.ndarray): baseline cumulative hazard.
-            data (np.ndarray): neighbours generated.
-            norm (Union[float, str]: functional norm to calculate the distance between the Cox model and the black box model.
-            max_difference_time_allowed (float): maximum difference between times allowed. If a difference exceeds this value, then max_difference_time_allowed will be used.
-            max_hazard_value_allowed (float): maximum hazard value allowed. If a prediction exceeds this value, then max_hazard_value_allows will be used.
-            verbose (bool): activate verbosity of the cvxpy solver.
-
-        Returns:
-            cox_coefficients (np.ndarray): coefficients of a COX model.
-        """
-        epsilon = 10 ** (-6)
-        limit_H_value = 50
-        num_features = data.shape[1]
-        m = self.unique_times_to_event.shape[0]
-        FN_pred = predict_wrapper(
-            predict_fn=predict_fn,
-            data=data,
-            unique_times_to_event=self.unique_times_to_event,
-            model_output_times=self.model_output_times,
-        )
-        if max_difference_time_allowed is not None:
-            if max_difference_time_allowed < 0:
-                raise ValueError("max_difference_time_allowed must be positive.")
-
-        if max_hazard_value_allowed is not None:
-            if max_hazard_value_allowed < 0:
-                raise ValueError("max_hazard_value_allowed must be positive.")
-
-        # From now on, original data must be a numpy array
-        if isinstance(data, np.ndarray):
-            data_np = data
-        elif isinstance(data, pd.DataFrame):
-            data_np = data.to_numpy()
-        else:
-            raise TypeError(
-                f"Unknown data type {type(data)} only np.ndarray or pd.DataFrame allowed."
-            )
-
-        # Varible to look for
-        b = cp.Variable((num_features, 1))
-
-        # Reshape and log of predictions
-        if type_fn == "survival":
-            H_score = -np.log(FN_pred + epsilon)
-        elif type_fn == "cumulative":
-            H_score = deepcopy(FN_pred)
-        else:
-            raise ValueError("type_fn must be either survival or cumulative string.")
-        max_H_score = np.max(H_score)
-        if max_hazard_value_allowed is None and max_H_score > limit_H_value:
-            logging.warning(
-                f"The prediction function produces extreme values: {max_H_score}. In terms of survival, Pr(Survival) is almost 0. Try to set max_hazard_value_allowed parameter to clip this value."
-            )
-        if max_hazard_value_allowed is not None:
-            H_score = np.clip(a=H_score, a_min=None, a_max=max_hazard_value_allowed)
-        log_correction = np.divide(H_score, np.log(H_score + epsilon))
-        H = np.reshape(np.array(H_score), newshape=(num_samples, m))
-        LnH = np.log(H + epsilon)
-
-        # Log of baseline cumulative hazard
-        LnH0 = np.log(H0 + epsilon)
-        # Compute the log correction
-        logs = np.reshape(log_correction, newshape=(num_samples, m))
-
-        # Distance weights
-        w = np.reshape(weights, newshape=(num_samples, 1))
-
-        # Time differences
-        t = np.empty(shape=(m + 1, 1))
-        t[:m, 0] = self.unique_times_to_event
-        t[m, 0] = t[m - 1, 0] + epsilon
-        delta_t = [t[i + 1, 0] - t[i, 0] for i in range(m)]
-        delta_t = np.reshape(np.array(delta_t), newshape=(m, 1))
-        if max_difference_time_allowed is not None:
-            delta_t = np.clip(a=delta_t, a_min=None, a_max=max_difference_time_allowed)
-
-        # Matrices to produce the proper sizes
-        ones_N = np.ones(shape=(num_samples, 1))
-        ones_m_1 = np.ones(shape=(m, 1))
-        B = np.dot(ones_N, LnH0.T)
-        C = LnH - B
-        Z = data_np @ b
-        D = Z @ ones_m_1.T
-        E = C - D
-
-        opt_maker = OptFuncionMaker(E, w, logs, delta_t)
-        funct = opt_maker.compute_function(norm=norm)
-
-        objective = cp.Minimize(funct)
-        prob = cp.Problem(objective)
-        prob.solve(verbose=verbose)
-        if prob.status not in ["infeasible", "unbounded"]:
-            cox_coefficients = b.value[:, 0]
-            self.computed_weights = cox_coefficients
-        else:
-            cox_coefficients = None
-            logging.warning(f"The optimisation problem is {prob.status}")
-        return cox_coefficients
+        b = opt_funcion_maker.solve_problem()
+        self.computed_weights = np.copy(b)
+        return b
 
     def plot_weights(
         self,
@@ -352,11 +186,13 @@ class SurvLimeExplainer:
     ) -> None:
         # Create docstring of the function
         """Plots the weights of the computed COX model.
+
         Args:
             figsize (Tuple[int, int]): size of the figure.
             feature_names (Optional[List[str]]): names of the features.
             scale_with_data_point (bool): whether to perform the elementwise multiplication between the point to be explained and the coefficients.
             figure_path (Optional[str]): path to save the figure.
+
         Returns:
             None.
         """
@@ -364,6 +200,10 @@ class SurvLimeExplainer:
             raise ValueError(
                 "SurvLIME weights not computed yet. Call explain_instance first before using this function."
             )
+        else:
+            are_there_any_nan = np.isnan(self.computed_weights).any
+            if are_there_any_nan:
+                raise ValueError("Some of the coefficients contain nan values.")
 
         if feature_names is not None:
             if len(feature_names) != self.computed_weights.shape[0]:
@@ -434,9 +274,10 @@ class SurvLimeExplainer:
         num_repetitions: int = 10,
         max_difference_time_allowed: Optional[float] = None,
         max_hazard_value_allowed: Optional[float] = None,
-        verbose: bool = True,
+        verbose: bool = False,
     ) -> pd.DataFrame:
         """Generates explanations for a prediction.
+
         Args:
             data (Union[pd.DataFrame, pd.Series, np.ndarray, List]): data points to be explained.
             predict_fn (Callable): function that computes cumulative hazard.
@@ -446,11 +287,12 @@ class SurvLimeExplainer:
             max_difference_time_allowed (Optional[float]): maximum difference between times allowed. If a difference exceeds this value, then max_difference_time_allowed will be used.
             max_hazard_value_allowed (Optional[float]): maximum hazard value allowed. If a prediction exceeds this value, then max_hazard_value_allows will be used.
             verbose (bool): whether or not to show cvxpy messages.
+
         Returns:
             montecarlo_explanation (pd.DataFrame): dataframe with the montecarlo explanation.
         """
         if isinstance(data, pd.DataFrame):
-            data_transformed = data.values
+            data_transformed = data.to_numpy()
         elif isinstance(data, pd.Series):
             data_transformed = data.to_numpy().reshape(1, -1)
         elif isinstance(data, np.ndarray):
@@ -476,27 +318,22 @@ class SurvLimeExplainer:
             weights_current_row = []
             for _ in range(num_repetitions):
                 # sample data point from the dataset
-                try:
-                    b = self.explain_instance(
-                        data_row=current_row,
-                        predict_fn=predict_fn,
-                        type_fn=type_fn,
-                        num_samples=num_samples,
-                        max_difference_time_allowed=max_difference_time_allowed,
-                        max_hazard_value_allowed=max_hazard_value_allowed,
-                        verbose=verbose,
-                    )
-                    if b is not None:
-                        weights_current_row.append(b)
-                    else:
-                        all_solved = False
-                except (
-                    cp.error.DCPError,
-                    cp.error.DGPError,
-                    cp.error.DPPError,
-                    cp.error.SolverError,
-                ):
+                b = self.explain_instance(
+                    data_row=current_row,
+                    predict_fn=predict_fn,
+                    type_fn=type_fn,
+                    num_samples=num_samples,
+                    max_difference_time_allowed=max_difference_time_allowed,
+                    max_hazard_value_allowed=max_hazard_value_allowed,
+                    verbose=verbose,
+                )
+                are_there_any_nan_value = np.isnan(b).any()
+
+                if are_there_any_nan_value:
                     all_solved = False
+                else:
+                    weights_current_row.append(b)
+
             weights_current_row = np.array(weights_current_row)
             mean_weight_row = np.mean(weights_current_row, axis=0)
             weights[i_row] = mean_weight_row
@@ -516,11 +353,13 @@ class SurvLimeExplainer:
         figure_path: Optional[str] = None,
     ) -> None:
         """Generates explanations for a prediction.
+
         Args:
             figsize (Tuple[int, int]): size of the figure.
             feature_names Optional[List[str]]): names of the features.
             scale_with_data_point (bool): whether to perform the elementwise multiplication between the point to be explained and the coefficients.
             figure_path (Optional[str]): path to save the figure.
+
         Returns:
             None.
         """
@@ -528,6 +367,10 @@ class SurvLimeExplainer:
             raise ValueError(
                 "Monte-Carlo weights not computed yet. Call montecarlo_explanation first before using this function."
             )
+        else:
+            are_there_any_nan = np.isnan(self.montecarlo_weights).any
+            if are_there_any_nan:
+                raise ValueError("Some of the coefficients contain nan values.")
 
         total_cols = self.montecarlo_weights.shape[1]
 
