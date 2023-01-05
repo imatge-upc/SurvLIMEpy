@@ -1,5 +1,4 @@
 from typing import Union, Callable, Optional, Literal, List
-from cvxpy.atoms.affine.binary_operators import MulExpression as MulExp
 from sklearn.metrics import pairwise_distances
 from survlimepy.utils.predict import predict_wrapper
 from sksurv.nonparametric import nelson_aalen_estimator
@@ -79,7 +78,7 @@ class OptFuncionMaker:
                 f"functional_norm should be greater than 1, given value {functional_norm}."
             )
         elif isinstance(functional_norm, str) and functional_norm != "inf":
-            raise ValueError(f"Invalid string for functional_norm.")
+            raise ValueError(f"Invalid string for functional_norm. It must be \"inf\".")
         if not (
             isinstance(functional_norm, float)
             or isinstance(functional_norm, int)
