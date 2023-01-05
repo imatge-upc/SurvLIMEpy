@@ -274,7 +274,6 @@ class OptFuncionMaker:
             prob.solve(solver="OSQP", verbose=self.verbose, eps_abs=1e-3, eps_rel=1e-3)
             if prob.status not in ["infeasible", "unbounded"]:
                 cox_coefficients = b.value[:, 0]
-                self.computed_weights = cox_coefficients
             else:
                 logging.warning(f"The status of the problem is {prob.status}.")
         except (
