@@ -316,7 +316,8 @@ class SurvLimeExplainer:
         for i_row in tqdm(range(total_rows)):
             current_row = data_transformed[i_row]
             weights_current_row = []
-            for _ in range(num_repetitions):
+            i_rep = 0
+            while i_rep < num_repetitions:
                 # sample data point from the dataset
                 b = self.explain_instance(
                     data_row=current_row,
@@ -333,6 +334,7 @@ class SurvLimeExplainer:
                     all_solved = False
                 else:
                     weights_current_row.append(b)
+                    i_rep += 1
 
             weights_current_row = np.array(weights_current_row)
             mean_weight_row = np.mean(weights_current_row, axis=0)
