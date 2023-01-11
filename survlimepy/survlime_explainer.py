@@ -250,9 +250,9 @@ class SurvLimeExplainer:
                 label=label,
             )
 
-        ax.set_xlabel("Features", fontsize=16)
-        ax.set_ylabel("Weight", fontsize=16)
-        ax.set_title("SurvLIME weights", fontsize=16)
+        ax.set_xlabel("Features", fontsize=14)
+        ax.set_ylabel("SurvLIME value", fontsize=14)
+        ax.set_title("Feature importance", fontsize=16, fontweight="bold")
 
         ax.tick_params(axis="x", labelsize=14, rotation=90)
         ax.tick_params(axis="y", labelsize=14)
@@ -425,12 +425,12 @@ class SurvLimeExplainer:
             ax=ax,
         )
         ax.tick_params(labelrotation=90)
-        p.set_xlabel("Features", fontsize=14, fontweight="bold")
-        p.set_ylabel("SurvLIME value", fontsize=14, fontweight="bold")
+        p.set_xlabel("Features", fontsize=14)
+        p.set_ylabel("SurvLIME value", fontsize=14)
         p.yaxis.grid(True)
         p.xaxis.grid(True)
 
-        p.set_title("SurvLIME values", fontsize=16, fontweight="bold")
+        p.set_title("Feature importance", fontsize=16, fontweight="bold")
 
         plt.xticks(fontsize=16, rotation=90)
         plt.yticks(fontsize=14, rotation=0)
