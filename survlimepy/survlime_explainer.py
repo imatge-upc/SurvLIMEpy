@@ -250,7 +250,7 @@ class SurvLimeExplainer:
                 label=label,
             )
 
-        ax.set_xlabel("Feature", fontsize=16)
+        ax.set_xlabel("Features", fontsize=16)
         ax.set_ylabel("Weight", fontsize=16)
         ax.set_title("SurvLIME weights", fontsize=16)
 
