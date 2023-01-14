@@ -15,8 +15,8 @@ class OptFuncionMaker:
 
     def __init__(
         self,
-        training_times: List[Union[bool, float, int]],
-        training_events: List[Union[float, int]],
+        training_events: Union[np.ndarray, pd.Series, List[Union[bool, float, int]]],
+        training_times: Union[np.ndarray, pd.Series, List[Union[float, int]]],
         neighbours: np.ndarray,
         neighbours_transformed: Union[np.ndarray, pd.DataFrame],
         num_samples: int,
@@ -35,8 +35,8 @@ class OptFuncionMaker:
         """Init function.
 
         Args:
-            training_times (List[Union[bool, float, int]]): training times to event.
-            training_events (List[Union[float, int]]): training events indicator.
+            training_events (Union[np.ndarray, pd.Series, List[Union[bool, float, int]]]): training events indicator.
+            training_times (Union[np.ndarray, pd.Series, List[Union[float, int]]]): training times to event.
             neighbours (np.ndarray): neighbours (num_samples x features).
             neighbours_transformed (Union[np.ndarray, pd.DataFrame]): neighbours in the appropriate format to use the prediction function.
             num_samples (int): number of neighbours to use.
@@ -55,8 +55,16 @@ class OptFuncionMaker:
         Returns:
             None.
         """
-        self.training_times = training_times
-        self.training_events = training_events
+        self.validate_events_times(training_events)
+        self.validate_events_times(training_times)
+        if isinstance(training_events, pd.Series):
+            self.training_events = training_events.to_numpy()
+        else:
+            self.training_events = training_events
+        if isinstance(training_times, pd.Series):
+            self.training_times = training_times.to_numpy()
+        else:
+            self.training_times = training_times
         self.neighbours = neighbours
         self.neighbours_transformed = neighbours_transformed
         self.num_samples = num_samples
@@ -135,6 +143,22 @@ class OptFuncionMaker:
 
         self.limit_H_warning = 500
         self.epsilon = 10 ** (-6)
+
+    @staticmethod
+    def validate_events_times(vector):
+        if not (
+            isinstance(vector, list)
+            or isinstance(vector, np.ndarray)
+            or isinstance(vector, pd.Series)
+        ):
+            raise TypeError(
+                "Both training_events and training_times must be a list, a numpy arroy or a pandas Series."
+            )
+        if isinstance(vector, np.ndarray) and len(vector) > 1:
+            raise TypeError(
+                "Both training_events and training_times must be 1D numpy arrays"
+            )
+        return None
 
     @staticmethod
     def compute_nelson_aalen_estimator(
