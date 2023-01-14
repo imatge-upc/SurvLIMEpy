@@ -9,6 +9,7 @@ description = "A python package implementing SurvLIME algorithm"
 authors = [
     {name = "Carlos Hernández Pérez", email = "crherperez95@gmail.com"},
     {name = "Cristian Pachón García", email = "cc.pachon@gmail.com"},
+    {name = "Verónica Vilaplana Besler", email = "veronica.vilaplana@upc.edu"},
 ]
 readme = "README.md"
 license = {file = "LICENSE"}
