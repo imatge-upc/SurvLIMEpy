@@ -19,8 +19,8 @@ class SurvLimeExplainer:
     def __init__(
         self,
         training_features: Union[np.ndarray, pd.DataFrame],
-        training_events: List[Union[float, int]],
-        training_times: List[Union[bool, float, int]],
+        training_events: Union[np.ndarray, pd.Series, List[Union[float, int]]],
+        training_times: Union[np.ndarray, pd.Series, List[Union[bool, float, int]]],
         model_output_times: np.ndarray,
         categorical_features: Optional[List[int]] = None,
         H0: Optional[Union[np.ndarray, List[float], StepFunction]] = None,
@@ -34,8 +34,8 @@ class SurvLimeExplainer:
 
         Args:
             training_features (Union[np.ndarray, pd.DataFrame]): data used to train the bb model.
-            training_events (List[Union[float, int]]): training events indicator.
-            training_times (List[Union[bool, float, int]]): training times to event.
+            training_events (Union[np.ndarray, pd.Series, List[Union[float, int]]]): training events indicator.
+            training_times (Union[np.ndarray, pd.Series, List[Union[bool, float, int]]]): training times to event.
             model_output_times (np.ndarray): output times of the bb model.
             categorical_features (Optional[List[int]]): list of integers indicating the categorical features.
             H0 (Optional[Union[np.ndarray, List[float], StepFunction]]): baseline cumulative hazard.
@@ -156,8 +156,8 @@ class SurvLimeExplainer:
 
         # Solve optimisation problem
         opt_funcion_maker = OptFuncionMaker(
-            training_times=self.training_times,
             training_events=self.training_events,
+            training_times=self.training_times,
             neighbours=scaled_data,
             neighbours_transformed=scaled_data_transformed,
             num_samples=num_samples,
