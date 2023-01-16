@@ -15,8 +15,8 @@ class OptFuncionMaker:
 
     def __init__(
         self,
-        training_times: List[Union[bool, float, int]],
-        training_events: List[Union[float, int]],
+        training_events: Union[np.ndarray, pd.Series, List[Union[bool, float, int]]],
+        training_times: Union[np.ndarray, pd.Series, List[Union[float, int]]],
         neighbours: np.ndarray,
         neighbours_transformed: Union[np.ndarray, pd.DataFrame],
         num_samples: int,
@@ -25,8 +25,8 @@ class OptFuncionMaker:
         kernel_fn: Callable,
         predict_fn: Callable,
         type_fn: Literal["survival", "cumulative"],
-        model_output_times: np.ndarray,
         functional_norm: Union[float, str],
+        model_output_times: Optional[np.ndarray] = None,
         H0: Optional[Union[np.ndarray, List[float], StepFunction]] = None,
         max_difference_time_allowed: Optional[float] = None,
         max_hazard_value_allowed: Optional[float] = None,
@@ -35,8 +35,8 @@ class OptFuncionMaker:
         """Init function.
 
         Args:
-            training_times (List[Union[bool, float, int]]): training times to event.
-            training_events (List[Union[float, int]]): training events indicator.
+            training_events (Union[np.ndarray, pd.Series, List[Union[bool, float, int]]]): training events indicator.
+            training_times (Union[np.ndarray, pd.Series, List[Union[float, int]]]): training times to event.
             neighbours (np.ndarray): neighbours (num_samples x features).
             neighbours_transformed (Union[np.ndarray, pd.DataFrame]): neighbours in the appropriate format to use the prediction function.
             num_samples (int): number of neighbours to use.
@@ -45,8 +45,8 @@ class OptFuncionMaker:
             kernel_fn (Callable): kernel function to be used for computing distances.
             predict_fn (Callable): function that computes cumulative hazard.
             type_fn (Literal["survival", "cumulative"]): whether predict_fn is the cumulative hazard funtion or survival function.
-            model_output_times (np.ndarray): output times of the bb model.
             functional_norm (Union[float, str]): functional norm to calculate the distance between the Cox model and the black box model.
+            model_output_times (Optional[np.ndarray]): output times of the bb model.
             H0 (Optional[Union[np.ndarray, List[float], StepFunction]]): baseline cumulative hazard.
             max_difference_time_allowed (Optional[float]): maximum difference between times allowed. If a difference exceeds this value, then max_difference_time_allowed will be used.
             max_hazard_value_allowed (Optional[float]): maximum hazard value allowed. If a prediction exceeds this value, then max_hazard_value_allows will be used.
@@ -55,8 +55,16 @@ class OptFuncionMaker:
         Returns:
             None.
         """
-        self.training_times = training_times
-        self.training_events = training_events
+        self.validate_events_times(training_events)
+        self.validate_events_times(training_times)
+        if isinstance(training_events, pd.Series):
+            self.training_events = training_events.to_numpy()
+        else:
+            self.training_events = training_events
+        if isinstance(training_times, pd.Series):
+            self.training_times = training_times.to_numpy()
+        else:
+            self.training_times = training_times
         self.neighbours = neighbours
         self.neighbours_transformed = neighbours_transformed
         self.num_samples = num_samples
@@ -69,7 +77,13 @@ class OptFuncionMaker:
             raise ValueError("type_fn must be either survival or cumulative string.")
         self.type_fn = type_fn
 
-        self.model_output_times = model_output_times
+        self.unique_times_to_event = np.sort(np.unique(self.training_times))
+        self.m = self.unique_times_to_event.shape[0]
+
+        if model_output_times is None:
+            self.model_output_times = np.copy(self.unique_times_to_event)
+        else:
+            self.model_output_times = model_output_times
 
         if (
             isinstance(functional_norm, float) or isinstance(functional_norm, int)
@@ -125,9 +139,6 @@ class OptFuncionMaker:
 
         self.verbose = verbose
 
-        self.unique_times_to_event = np.sort(np.unique(self.training_times))
-        self.m = self.unique_times_to_event.shape[0]
-
         if self.H0.shape[0] != self.m:
             raise ValueError(f"H0 must have {self.m} rows/elements.")
         if self.H0.shape[1] != 1:
@@ -135,6 +146,22 @@ class OptFuncionMaker:
 
         self.limit_H_warning = 500
         self.epsilon = 10 ** (-6)
+
+    @staticmethod
+    def validate_events_times(vector):
+        if not (
+            isinstance(vector, list)
+            or isinstance(vector, np.ndarray)
+            or isinstance(vector, pd.Series)
+        ):
+            raise TypeError(
+                "Both training_events and training_times must be a list, a numpy arroy or a pandas Series."
+            )
+        if isinstance(vector, np.ndarray) and len(vector) > 1:
+            raise TypeError(
+                "Both training_events and training_times must be 1D numpy arrays"
+            )
+        return None
 
     @staticmethod
     def compute_nelson_aalen_estimator(
