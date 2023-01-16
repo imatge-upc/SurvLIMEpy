@@ -69,6 +69,12 @@ class Loader:
             ]
             self.categorical_columns = ["ph.ecog"]
             self.df = pd.read_csv(lung_path)
+            # Delete the row with ph.ecog = 3.0
+            self.df = self.df[self.df["ph.ecog"] != 3.0]
+            # delete the row with ph.ecog = nan
+            self.df = self.df[self.df["ph.ecog"].notna()]
+            # substract 1 to each value of the status column
+            self.df["status"] = [x - 1 for x in self.df["status"]]
 
         elif dataset_name == "synthetic":
             ## TODO
@@ -121,7 +127,7 @@ class Loader:
         events: list,
         times: list,
         standarize: bool = True,
-        random_seed: int = 1,
+        random_seed: int = 0,
     ) -> list([pd.DataFrame, np.ndarray]):
         """
         Preprocesses the data to be used as model input.
@@ -140,11 +146,11 @@ class Loader:
         # and standarize them
         y = Surv.from_arrays(events, times)
         X_train, X_test, y_train, y_test = train_test_split(
-            x_pre.copy(), y, test_size=0.30, random_state=random_seed
+            x_pre.copy(), y, test_size=0.10, random_state=random_seed
         )
-        X_val, X_test, y_val, y_test = train_test_split(
-            X_test.copy(), y_test, test_size=0.5, random_state=random_seed
-        )
+        # X_val, X_test, y_val, y_test = train_test_split(
+        #    X_test.copy(), y_test, test_size=0.5, random_state=random_seed
+        # )
 
         if standarize:
             scaler = StandardScaler()
@@ -154,11 +160,11 @@ class Loader:
                 index=X_train.index,
             )
 
-            X_val = pd.DataFrame(
-                data=scaler.transform(X_val),
-                columns=X_val.columns,
-                index=X_val.index,
-            )
+            #    X_val = pd.DataFrame(
+            #        data=scaler.transform(X_val),
+            #        columns=X_val.columns,
+            #        index=X_val.index,
+            #    )
 
             X_test = pd.DataFrame(
                 data=scaler.transform(X_test),
@@ -166,7 +172,7 @@ class Loader:
                 index=X_test.index,
             )
 
-        return [X_train, y_train], [X_val, y_val], [X_test, y_test]
+        return [X_train, y_train], [X_test, y_test]  # [X_val, y_val]
 
 
 class RandomSurvivalData:
