@@ -26,7 +26,7 @@ def test_shape_udca_preprocessed() -> None:
 def test_shape_lung_preprocessed() -> None:
     loader = Loader(dataset_name="lung")
     x, _, _ = loader.load_data()
-    assert x.shape == (228, 8)
+    assert x.shape == (226, 8)
 
 
 def test_shape_pbc_preprocessed() -> None:
@@ -38,7 +38,7 @@ def test_shape_pbc_preprocessed() -> None:
 def test_shape_vetearns_computed_weights() -> None:
     loader = Loader(dataset_name="veterans")
     x, events, times = loader.load_data()
-    train, _, test = loader.preprocess_datasets(x, events, times, random_seed=0)
+    train, test = loader.preprocess_datasets(x, events, times, random_seed=0)
     b = compute_weights(train, test)
     assert len(b) == 9
 
@@ -46,7 +46,7 @@ def test_shape_vetearns_computed_weights() -> None:
 def test_shape_udca_computed_weights() -> None:
     loader = Loader(dataset_name="udca")
     x, events, times = loader.load_data()
-    train, _, test = loader.preprocess_datasets(x, events, times, random_seed=0)
+    train, test = loader.preprocess_datasets(x, events, times, random_seed=0)
     b = compute_weights(train, test)
     assert len(b) == 4
 
@@ -54,15 +54,15 @@ def test_shape_udca_computed_weights() -> None:
 def test_shape_lung_computed_weights() -> None:
     loader = Loader(dataset_name="lung")
     x, events, times = loader.load_data()
-    train, _, test = loader.preprocess_datasets(x, events, times, random_seed=0)
+    train, test = loader.preprocess_datasets(x, events, times, random_seed=0)
     b = compute_weights(train, test)
-    assert len(b) == 11
+    assert len(b) == 10
 
 
 def test_shape_pbc_computed_weights() -> None:
     loader = Loader(dataset_name="pbc")
     x, events, times = loader.load_data()
-    train, _, test = loader.preprocess_datasets(x, events, times, random_seed=0)
+    train, test = loader.preprocess_datasets(x, events, times, random_seed=0)
     b = compute_weights(train, test)
     assert len(b) == 22
 
@@ -70,7 +70,7 @@ def test_shape_pbc_computed_weights() -> None:
 def test_norm_less_than_one() -> None:
     loader = Loader(dataset_name="veterans")
     x, events, times = loader.load_data()
-    train, _, test = loader.preprocess_datasets(x, events, times, random_seed=0)
+    train, test = loader.preprocess_datasets(x, events, times, random_seed=0)
     with pytest.raises(ValueError):
         compute_weights(train, test, norm=0.5)
 
@@ -104,7 +104,7 @@ def test_categorical_features() -> None:
 def test_num_rows() -> None:
     loader = Loader(dataset_name="lung")
     x, events, times = loader.load_data()
-    train, _, test = loader.preprocess_datasets(x, events, times, random_seed=0)
+    train, test = loader.preprocess_datasets(x, events, times, random_seed=0)
     with pytest.raises(ValueError):
         compute_weights(train, test, mock_predict_fn=True)
 
