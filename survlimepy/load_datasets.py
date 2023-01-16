@@ -27,8 +27,10 @@ class Loader:
                 "age",
                 "prior",
             ]
-            self.categorical_columns = ["celltype"]
+            self.categorical_columns = ["celltype", "prior"]
             self.df = pd.read_csv(veteran_path)
+            # if value in prior is different from 0 change to 1
+            self.df["prior"] = [1 if x != 0 else 0 for x in self.df["prior"]]
         elif dataset_name == "udca":
             self.feature_columns = ["bili", "stage", "riskscore", "trt"]
             self.categorical_columns = []
