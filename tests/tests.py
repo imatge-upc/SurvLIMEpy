@@ -40,7 +40,7 @@ def test_shape_vetearns_computed_weights() -> None:
     x, events, times = loader.load_data()
     train, test = loader.preprocess_datasets(x, events, times, random_seed=0)
     b = compute_weights(train, test)
-    assert len(b) == 9
+    assert len(b) == 8
 
 
 def test_shape_udca_computed_weights() -> None:
@@ -56,7 +56,7 @@ def test_shape_lung_computed_weights() -> None:
     x, events, times = loader.load_data()
     train, test = loader.preprocess_datasets(x, events, times, random_seed=0)
     b = compute_weights(train, test)
-    assert len(b) == 10
+    assert len(b) == 9
 
 
 def test_shape_pbc_computed_weights() -> None:
@@ -64,7 +64,7 @@ def test_shape_pbc_computed_weights() -> None:
     x, events, times = loader.load_data()
     train, test = loader.preprocess_datasets(x, events, times, random_seed=0)
     b = compute_weights(train, test)
-    assert len(b) == 22
+    assert len(b) == 20
 
 
 def test_norm_less_than_one() -> None:

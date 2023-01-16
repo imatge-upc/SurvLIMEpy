@@ -143,7 +143,12 @@ class Loader:
         x_pre = x.copy()
         for cat_feat in self.categorical_columns:
             names = [cat_feat + "_" + str(value) for value in x_pre[cat_feat].unique()]
-            x_pre[names] = pd.get_dummies(x_pre[cat_feat])
+            df_dummy_i = pd.get_dummies(
+                x_pre[cat_feat], drop_first=True, prefix=cat_feat
+            )
+            new_names = df_dummy_i.columns
+            # x_pre[names[1:]] = pd.get_dummies(x_pre[cat_feat], drop_first=True)
+            x_pre[new_names] = df_dummy_i
             x_pre.drop(cat_feat, inplace=True, axis=1)
 
         # Then convert the data and the features to three splits
