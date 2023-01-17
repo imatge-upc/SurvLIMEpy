@@ -1,7 +1,7 @@
 # SurvLIMEpy
 
 <p align="center">
-    <img src="logo.png" width="256" height="256">
+    <img src="https://github.com/imatge-upc/SurvLIMEpy/blob/main/logo.png?raw=true" width="256" height="256">
 </p>
 
 
@@ -27,7 +27,7 @@ loader = Loader(dataset_name='udca')
 X, events, times = loader.load_data()
 
 # Train a model
-train, val, test = loader.preprocess_datasets(X, events, times)
+train, test = loader.preprocess_datasets(X, events, times)
 model = CoxPHSurvivalAnalysis()
 model.fit(train[0], train[1])
 
