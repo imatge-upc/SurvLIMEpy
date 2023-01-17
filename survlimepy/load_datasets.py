@@ -290,6 +290,8 @@ class RandomSurvivalData:
             time_to_event = np.where(
                 time_to_event > self.time_cap, self.time_cap, time_to_event
             )
+        if len(time_to_event.shape) == 2:
+            time_to_event = time_to_event[:, 0]
         return time_to_event
 
     def random_event(self, num_points: int) -> np.ndarray:
