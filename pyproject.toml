@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "survlimepy"
-version = "0.0.1"
+version = "0.0.2"
 description = "A python package implementing SurvLIME algorithm"
 authors = [
     {name = "Carlos Hernández Pérez", email = "crherperez95@gmail.com"},
