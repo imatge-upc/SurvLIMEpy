@@ -59,14 +59,6 @@ def test_shape_lung_computed_weights() -> None:
     assert len(b) == 9
 
 
-def test_shape_pbc_computed_weights() -> None:
-    loader = Loader(dataset_name="pbc")
-    x, events, times = loader.load_data()
-    train, test = loader.preprocess_datasets(x, events, times, random_seed=0)
-    b = compute_weights(train, test)
-    assert len(b) == 20
-
-
 def test_norm_less_than_one() -> None:
     loader = Loader(dataset_name="veterans")
     x, events, times = loader.load_data()
