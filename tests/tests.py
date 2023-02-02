@@ -83,6 +83,7 @@ def test_categorical_features() -> None:
     neighbours_generator = NeighboursGenerator(
         training_features=df,
         data_row=data_row,
+        sigma=1,
         categorical_features=[2, 3],
         random_state=random_state,
     )

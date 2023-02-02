@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from typing import List, Dict, Union, Optional
+from typing import List, Dict, Union, Optional, Iterable
 
 
 class NeighboursGenerator:
@@ -10,6 +10,7 @@ class NeighboursGenerator:
         self,
         training_features: Union[np.ndarray, pd.DataFrame],
         data_row: np.ndarray,
+        sigma: float,
         categorical_features: Optional[List[int]] = None,
         random_state: Optional[int] = None,
     ) -> None:
@@ -18,6 +19,7 @@ class NeighboursGenerator:
         Args:
             training_features (Union[np.ndarray, pd.DataFrame]): data used to train the bb model.
             data_row (np.ndarray): data point to be explained of shape (1 x features).
+            sigma (float): standar deviation used to generate the neighbours.
             categorical_features (Optional[List[int]]): list of integeter indicating the categorical features.
             random_state (Optional[int]): number to be used for random seeds.
         Returns:
@@ -31,6 +33,7 @@ class NeighboursGenerator:
         else:
             self.training_features = training_features
 
+        self.sigma = sigma
         self.data_row = data_row
         self.total_features = self.training_features.shape[1]
 
@@ -55,8 +58,55 @@ class NeighboursGenerator:
         self.random_state = random_state
 
     @staticmethod
-    def to_dict(keys, values):
-        return {key: value for key, value in zip(keys, values)}
+    def to_dict(keys: Iterable, values: Iterable) -> Dict:
+        """Creates a dictionary from two iterables.
+
+        Args:
+            keys (Iterable): iterable used as keys.
+            values (Iterable): iterable used as values.
+
+        Returns:
+            dict_kv (Dict): a dictionaty containing keys, values.
+        """
+        dict_kv = {key: value for key, value in zip(keys, values)}
+        return dict_kv
+
+    def scale_point(self, point: np.ndarray) -> np.ndarray:
+        """Scale a single point taking into account the matrix of standard deviations.
+
+        Arg:
+            point (np.ndarray): the point to be scaled.
+
+        Returns:
+            scaled_point (np.ndarray): the scaled point.
+        """
+        if self.type_features in ["continuous", "mixed"]:
+            training_features_cont = self.training_features[:, self.cont_features]
+            point_cont = point[0][self.cont_features]
+            # Estimate the variance for continuous features
+            sd_matrix = np.diag(
+                np.nanstd(training_features_cont, axis=0, dtype=np.float32)
+            )
+            sd_matrix_inv = np.linalg.inv(sd_matrix)
+            # Estimate the mean
+            mean_vector = np.mean(training_features_cont, axis=0)
+            # Rescale
+            point_centered = point_cont - mean_vector
+            scaled_point_cont = np.reshape(
+                np.matmul(point_centered, sd_matrix_inv), (1, -1)
+            )
+
+        if self.type_features == "mixed":
+            point_cat = np.reshape(point[0][self.cat_features], (1, -1))
+            scaled_point_concat = np.concatenate((scaled_point_cont, point_cat), axis=1)
+            all_features = [*self.cont_features, *self.cat_features]
+            idx_sorted = sorted(range(len(all_features)), key=lambda k: all_features[k])
+            scaled_point = scaled_point_concat[:, idx_sorted]
+        elif self.type_features == "continuous":
+            scaled_point = np.copy(scaled_point_cont)
+        else:
+            scaled_point = np.copy(point)
+        return scaled_point
 
     def estimate_distribution_categorical_features(self) -> Dict:
         """Estimates the distribution for each categorical variable.
@@ -86,20 +136,16 @@ class NeighboursGenerator:
         Returns:
             data (np.ndarray): original data point and neighbours with shape (num_samples x features).
         """
-        # Get continuous features
-        training_features_cont = self.training_features[:, self.cont_features]
-
-        # Estimate the variance for continuous features
-        sd_value = np.nanstd(training_features_cont, axis=0, dtype=np.float32)
-
         # Generate neighbours
-        neighbours = self.random_state.normal(
-            0, 1, size=(num_samples, self.total_cont_features)
+        data_row_rescaled = self.scale_point(point=self.data_row)
+        data_row_rescaled_cont = data_row_rescaled[0, self.cont_features].astype(
+            np.float32
         )
-        data_row_cont = self.data_row[0][self.cont_features].astype(neighbours.dtype)
-        neighbours *= sd_value
-        neighbours += data_row_cont
-
+        neighbours = self.random_state.normal(
+            loc=data_row_rescaled_cont,
+            scale=self.sigma,
+            size=(num_samples, self.total_cont_features),
+        )
         return neighbours
 
     def generate_cat_neighbours(self, num_samples: int) -> np.ndarray:
@@ -153,8 +199,10 @@ class NeighboursGenerator:
         elif self.type_features == "categorical":
             neighbours = np.copy(X_neigh_cat)
         else:
+            all_features = [*self.cont_features, *self.cat_features]
+            idx_sorted = sorted(range(len(all_features)), key=lambda k: all_features[k])
             neighbours = np.concatenate(
                 (X_neigh_cont, X_neigh_cat), axis=1, dtype=object
             )
-
+            neighbours = neighbours[:, idx_sorted]
         return neighbours

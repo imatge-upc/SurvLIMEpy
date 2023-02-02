@@ -155,7 +155,7 @@ class OptFuncionMaker:
             or isinstance(vector, pd.Series)
         ):
             raise TypeError(
-                "Both training_events and training_times must be a list, a numpy arroy or a pandas Series."
+                "Both training_events and training_times must be a list, a numpy array or a pandas Series."
             )
         if isinstance(vector, np.ndarray) and len(vector) > 1:
             raise TypeError(
@@ -190,7 +190,8 @@ class OptFuncionMaker:
         ).ravel()
         weights = self.kernel_fn(distances)
         w = np.reshape(weights, newshape=(self.num_samples, 1))
-        return w
+        w_rescaled = w / np.sum(w)
+        return w_rescaled
 
     def get_predictions(self) -> np.ndarray:
         """Compute the prediction for each neighbour."""
@@ -206,7 +207,11 @@ class OptFuncionMaker:
         else:
             H_score = np.copy(FN_pred)
         max_H_score = np.max(H_score)
-        if self.max_hazard_value_allowed is None and max_H_score > self.limit_H_warning:
+        if (
+            self.verbose
+            and self.max_hazard_value_allowed is None
+            and max_H_score > self.limit_H_warning
+        ):
             logging.warning(
                 f"The prediction function produces extreme values: {max_H_score}. In terms of survival, Pr(Survival) is almost 0. Try to set max_hazard_value_allowed parameter to clip this value."
             )

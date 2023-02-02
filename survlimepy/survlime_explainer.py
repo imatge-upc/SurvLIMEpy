@@ -57,6 +57,11 @@ class SurvLimeExplainer:
         self.computed_weights = None
         self.montecarlo_weights = None
         self.is_data_frame = isinstance(self.training_features, pd.DataFrame)
+        self.is_np_array = isinstance(self.training_features, np.ndarray)
+        if not (self.is_data_frame or self.is_np_array):
+            raise TypeError(
+                "training_features must be either a numpy array or a pandas DataFrame."
+            )
         if self.is_data_frame:
             self.feature_names = self.training_features.columns
         else:
@@ -64,17 +69,27 @@ class SurvLimeExplainer:
                 f"feature_{i}" for i in range(self.training_features.shape[1])
             ]
         self.H0 = H0
+        self.num_individuals = self.training_features.shape[0]
+        self.num_features = self.training_features.shape[1]
 
+        num_h_opt = 4
+        den_h_opt = self.num_individuals * (self.num_features + 2)
+        pow_h_opt = 1 / (self.num_features + 4)
+        h_opt = (num_h_opt / den_h_opt) ** pow_h_opt
+        self.sigma_neighbours = h_opt
         if kernel_width is None:
-            kernel_width = np.sqrt(self.training_features.shape[1]) * 0.75
-        kernel_width = float(kernel_width)
+            kernel_width = h_opt
 
         self.kernel_distance = kernel_distance
 
         if kernel_fn is None:
 
             def kernel_fn(d: np.ndarray, kernel_width: float) -> np.ndarray:
-                return np.sqrt(np.exp(-(d**2) / kernel_width**2))
+                p = self.num_features
+                kernel_width_sq = kernel_width**2
+                d_sq = d**2
+                pow_exp = -1 / (2 * kernel_width_sq) * d_sq
+                return 1 / (kernel_width**p) * np.exp(pow_exp)
 
         self.kernel_fn = partial(kernel_fn, kernel_width=kernel_width)
         self.functional_norm = functional_norm
@@ -147,12 +162,14 @@ class SurvLimeExplainer:
         neighbours_generator = NeighboursGenerator(
             training_features=self.training_features,
             data_row=self.data_point,
+            sigma=self.sigma_neighbours,
             categorical_features=self.categorical_features,
             random_state=self.random_state,
         )
 
         scaled_data = neighbours_generator.generate_neighbours(num_samples=num_samples)
         scaled_data_transformed = self.transform_data(data=scaled_data)
+        data_point_scaled = neighbours_generator.scale_point(self.data_point)
 
         # Solve optimisation problem
         opt_funcion_maker = OptFuncionMaker(
@@ -161,7 +178,7 @@ class SurvLimeExplainer:
             neighbours=scaled_data,
             neighbours_transformed=scaled_data_transformed,
             num_samples=num_samples,
-            data_point=self.data_point,
+            data_point=data_point_scaled,
             kernel_distance=self.kernel_distance,
             kernel_fn=self.kernel_fn,
             predict_fn=predict_fn,
