@@ -72,7 +72,7 @@ class NeighboursGenerator:
         return dict_kv
 
     def scale_point(self, point: np.ndarray) -> np.ndarray:
-        """Scale a single point taking into account the matrix of standard deviations.
+        """Scale a single point taking into account the matrix of standard deviations as well as the vector of means.
 
         Arg:
             point (np.ndarray): the point to be scaled.
