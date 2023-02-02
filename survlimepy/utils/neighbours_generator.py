@@ -19,7 +19,7 @@ class NeighboursGenerator:
         Args:
             training_features (Union[np.ndarray, pd.DataFrame]): data used to train the bb model.
             data_row (np.ndarray): data point to be explained of shape (1 x features).
-            sigma (float): standar deviation used to generate the neighbours.
+            sigma (float): standard deviation used to generate the neighbours.
             categorical_features (Optional[List[int]]): list of integeter indicating the categorical features.
             random_state (Optional[int]): number to be used for random seeds.
         Returns:
