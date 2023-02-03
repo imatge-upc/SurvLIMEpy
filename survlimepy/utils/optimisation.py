@@ -15,14 +15,14 @@ class OptFuncionMaker:
 
     def __init__(
         self,
+        training_features: np.ndarray,
         training_events: Union[np.ndarray, pd.Series, List[Union[bool, float, int]]],
         training_times: Union[np.ndarray, pd.Series, List[Union[float, int]]],
+        kernel_width: float,
         neighbours: np.ndarray,
         neighbours_transformed: Union[np.ndarray, pd.DataFrame],
         num_samples: int,
         data_point: np.ndarray,
-        kernel_distance: str,
-        kernel_fn: Callable,
         predict_fn: Callable,
         type_fn: Literal["survival", "cumulative"],
         functional_norm: Union[float, str],
@@ -35,14 +35,14 @@ class OptFuncionMaker:
         """Init function.
 
         Args:
+            training_features (np.ndarray): data used to train the bb model.
             training_events (Union[np.ndarray, pd.Series, List[Union[bool, float, int]]]): training events indicator.
             training_times (Union[np.ndarray, pd.Series, List[Union[float, int]]]): training times to event.
+            kernel_width (float): width of the kernel to be used to compute distances.
             neighbours (np.ndarray): neighbours (num_samples x features).
             neighbours_transformed (Union[np.ndarray, pd.DataFrame]): neighbours in the appropriate format to use the prediction function.
             num_samples (int): number of neighbours to use.
             data_point (np.ndarray): data point to be explained.
-            kernel_distance (str): metric to be used for computing neighbours distance to the original point.
-            kernel_fn (Callable): kernel function to be used for computing distances.
             predict_fn (Callable): function that computes cumulative hazard.
             type_fn (Literal["survival", "cumulative"]): whether predict_fn is the cumulative hazard funtion or survival function.
             functional_norm (Union[float, str]): functional norm to calculate the distance between the Cox model and the black box model.
@@ -55,6 +55,7 @@ class OptFuncionMaker:
         Returns:
             None.
         """
+        self.training_features = training_features
         self.validate_events_times(training_events)
         self.validate_events_times(training_times)
         if isinstance(training_events, pd.Series):
@@ -65,12 +66,11 @@ class OptFuncionMaker:
             self.training_times = training_times.to_numpy()
         else:
             self.training_times = training_times
+        self.kernel_width = kernel_width
         self.neighbours = neighbours
         self.neighbours_transformed = neighbours_transformed
         self.num_samples = num_samples
         self.data_point = data_point
-        self.kernel_distance = kernel_distance
-        self.kernel_fn = kernel_fn
         self.predict_fn = predict_fn
 
         if type_fn not in ["survival", "cumulative"]:
@@ -146,6 +146,10 @@ class OptFuncionMaker:
 
         self.limit_H_warning = 500
         self.epsilon = 10 ** (-6)
+        self.sd_features = np.std(
+            self.training_features, axis=0, dtype=self.training_features.dtype
+        )
+        self.sd_sq = np.square(self.sd_features)
 
     @staticmethod
     def validate_events_times(vector):
@@ -182,19 +186,62 @@ class OptFuncionMaker:
         H0 = np.reshape(H0, newshape=(m, 1))
         return H0
 
+    def weighted_euclidean_distance(self, x: np.ndarray, y: np.ndarray) -> np.ndarray:
+        """Compute the weighted Euclidean distance.
+
+        Args:
+            x (np.ndarray): the first array.
+            y (np.ndarray): the second array.
+
+        Returns:
+            distance (np.ndarray): the distance between the two arrays.
+        """
+        diff = x - y
+        diff_sq = np.square(diff)
+        div = np.divide(diff_sq, self.sd_sq)
+        distance = np.sqrt(np.sum(div))
+        return distance
+
+    def kernel_fn(self, d):
+        """Compute the kernel function.
+
+        Args:
+            d (np.ndarray): the distance.
+
+        Returns:
+            weight (np.ndarray): the kernel weight.
+        """
+        num = -(d**2)
+        den = 2 * self.kernel_width
+        weight = np.exp(num / den)
+        return weight
+
     def get_weights(self):
-        """Compute the weights of each individual."""
+        """Compute the weights of each individual.
+
+        Args:
+            None
+
+        Returns:
+            w (np.ndarray): the weights for each individual.
+        """
         # Compute weights.
         distances = pairwise_distances(
-            self.neighbours, self.data_point, metric=self.kernel_distance
+            self.neighbours, self.data_point, metric=self.weighted_euclidean_distance
         ).ravel()
         weights = self.kernel_fn(distances)
         w = np.reshape(weights, newshape=(self.num_samples, 1))
-        w_rescaled = w / np.sum(w)
-        return w_rescaled
+        return w
 
     def get_predictions(self) -> np.ndarray:
-        """Compute the prediction for each neighbour."""
+        """Compute the prediction for each neighbour.
+
+        Args:
+            None
+
+        Returns:
+            H (np.ndarray): the prediction.
+        """
         # Compute predictions
         FN_pred = predict_wrapper(
             predict_fn=self.predict_fn,
@@ -207,11 +254,7 @@ class OptFuncionMaker:
         else:
             H_score = np.copy(FN_pred)
         max_H_score = np.max(H_score)
-        if (
-            self.verbose
-            and self.max_hazard_value_allowed is None
-            and max_H_score > self.limit_H_warning
-        ):
+        if self.max_hazard_value_allowed is None and max_H_score > self.limit_H_warning:
             logging.warning(
                 f"The prediction function produces extreme values: {max_H_score}. In terms of survival, Pr(Survival) is almost 0. Try to set max_hazard_value_allowed parameter to clip this value."
             )
@@ -223,7 +266,14 @@ class OptFuncionMaker:
         return H
 
     def get_delta_t(self) -> np.ndarray:
-        """Compute the vector of delta times."""
+        """Compute the vector of delta times.
+
+        Args:
+            None
+
+        Returns:
+            delta_t (np.ndarray): the vector of delta times.
+        """
         t = np.empty(shape=(self.m + 1, 1))
         t[: self.m, 0] = self.unique_times_to_event
         t[self.m, 0] = t[self.m - 1, 0] + self.epsilon
@@ -274,7 +324,7 @@ class OptFuncionMaker:
         LnH = np.log(H + self.epsilon)
 
         # Compute the log correction
-        log_correction = np.divide(H, np.log(H + self.epsilon))
+        log_correction = np.divide(H, LnH)
 
         # Log of baseline cumulative hazard
         LnH0 = np.log(self.H0 + self.epsilon)
