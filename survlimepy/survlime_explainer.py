@@ -1,4 +1,3 @@
-from functools import partial
 import logging
 from copy import deepcopy
 from typing import Callable, Tuple, Union, List, Literal, Optional
@@ -22,11 +21,8 @@ class SurvLimeExplainer:
         training_events: Union[np.ndarray, pd.Series, List[Union[bool, float, int]]],
         training_times: Union[np.ndarray, pd.Series, List[Union[float, int]]],
         model_output_times: Optional[np.ndarray] = None,
-        categorical_features: Optional[List[int]] = None,
         H0: Optional[Union[np.ndarray, List[float], StepFunction]] = None,
         kernel_width: Optional[float] = None,
-        kernel_distance: str = "euclidean",
-        kernel_fn: Optional[Callable] = None,
         functional_norm: Union[float, str] = 2,
         random_state: Optional[int] = None,
     ) -> None:
@@ -37,11 +33,8 @@ class SurvLimeExplainer:
             training_events (Union[np.ndarray, pd.Series, List[Union[bool, float, int]]]): training events indicator.
             training_times (Union[np.ndarray, pd.Series, List[Union[float, int]]]): training times to event.
             model_output_times (Optional[np.ndarray]): output times of the bb model.
-            categorical_features (Optional[List[int]]): list of integers indicating the categorical features.
             H0 (Optional[Union[np.ndarray, List[float], StepFunction]]): baseline cumulative hazard.
-            kernel_width (Optional[List[float]]): width of the kernel to be used for computing distances.
-            kernel_distance (str): metric to be used for computing neighbours distance to the original point.
-            kernel_fn (Optional[Callable]): kernel function to be used for computing distances.
+            kernel_width (Optional[List[float]]): width of the kernel to be used to generate the neighbours and to compute distances.
             functional_norm (Optional[Union[float, str]]): functional norm to calculate the distance between the Cox model and the black box model.
             random_state (Optional[int]): number to be used for random seeds.
 
@@ -52,7 +45,6 @@ class SurvLimeExplainer:
         self.training_features = training_features
         self.training_events = training_events
         self.training_times = training_times
-        self.categorical_features = categorical_features
         self.model_output_times = model_output_times
         self.computed_weights = None
         self.montecarlo_weights = None
@@ -64,34 +56,23 @@ class SurvLimeExplainer:
             )
         if self.is_data_frame:
             self.feature_names = self.training_features.columns
+            self.training_features_np = training_features.to_numpy()
         else:
             self.feature_names = [
                 f"feature_{i}" for i in range(self.training_features.shape[1])
             ]
+            self.training_features_np = np.copy(training_features)
         self.H0 = H0
         self.num_individuals = self.training_features.shape[0]
         self.num_features = self.training_features.shape[1]
 
-        num_h_opt = 4
-        den_h_opt = self.num_individuals * (self.num_features + 2)
-        pow_h_opt = 1 / (self.num_features + 4)
-        h_opt = (num_h_opt / den_h_opt) ** pow_h_opt
-        self.sigma_neighbours = h_opt
         if kernel_width is None:
-            kernel_width = h_opt
+            num_sigma_opt = 4
+            den_sigma_opt = self.num_individuals * (self.num_features + 2)
+            pow_sigma_opt = 1 / (self.num_features + 4)
+            kernel_default = (num_sigma_opt / den_sigma_opt) ** pow_sigma_opt
+            self.kernel_width = kernel_default
 
-        self.kernel_distance = kernel_distance
-
-        if kernel_fn is None:
-
-            def kernel_fn(d: np.ndarray, kernel_width: float) -> np.ndarray:
-                p = self.num_features
-                kernel_width_sq = kernel_width**2
-                d_sq = d**2
-                pow_exp = -1 / (2 * kernel_width_sq) * d_sq
-                return 1 / (kernel_width**p) * np.exp(pow_exp)
-
-        self.kernel_fn = partial(kernel_fn, kernel_width=kernel_width)
         self.functional_norm = functional_norm
 
     def transform_data(
@@ -160,27 +141,25 @@ class SurvLimeExplainer:
 
         # Generate neighbours
         neighbours_generator = NeighboursGenerator(
-            training_features=self.training_features,
+            training_features=self.training_features_np,
             data_row=self.data_point,
-            sigma=self.sigma_neighbours,
-            categorical_features=self.categorical_features,
+            sigma=self.kernel_width,
             random_state=self.random_state,
         )
 
         scaled_data = neighbours_generator.generate_neighbours(num_samples=num_samples)
         scaled_data_transformed = self.transform_data(data=scaled_data)
-        data_point_scaled = neighbours_generator.scale_point(self.data_point)
 
         # Solve optimisation problem
         opt_funcion_maker = OptFuncionMaker(
+            training_features=self.training_features_np,
             training_events=self.training_events,
             training_times=self.training_times,
+            kernel_width=self.kernel_width,
             neighbours=scaled_data,
             neighbours_transformed=scaled_data_transformed,
             num_samples=num_samples,
-            data_point=data_point_scaled,
-            kernel_distance=self.kernel_distance,
-            kernel_fn=self.kernel_fn,
+            data_point=self.data_point,
             predict_fn=predict_fn,
             type_fn=type_fn,
             functional_norm=self.functional_norm,
