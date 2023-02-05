@@ -179,6 +179,7 @@ class SurvLimeExplainer:
         feature_names: Optional[List[str]] = None,
         scale_with_data_point: bool = False,
         figure_path: Optional[str] = None,
+        with_colour: bool = True,
     ) -> None:
         # Create docstring of the function
         """Plots the weights of the computed COX model.
@@ -188,6 +189,7 @@ class SurvLimeExplainer:
             feature_names (Optional[List[str]]): names of the features.
             scale_with_data_point (bool): whether to perform the elementwise multiplication between the point to be explained and the coefficients.
             figure_path (Optional[str]): path to save the figure.
+            with_colour (bool): boolean indicating whether the colour palette for positive coefficients is different than thecolour palette for negative coefficients. Default is set to True.
 
         Returns:
             None.
@@ -231,21 +233,31 @@ class SurvLimeExplainer:
         neg_feature_names = [
             f for f, w in zip(sorted_feature_names, sorted_weights) if w < 0
         ]
-
+        all_data = []
         for label, weights_separated, palette in zip(
             [pos_feature_names, neg_feature_names],
             [pos_weights, neg_weights],
             ["Reds_r", "Blues"],
         ):
             data = pd.DataFrame({"features": label, "weights": weights_separated})
+            all_data.append(data)
+            if with_colour:
+                ax.bar(
+                    "features",
+                    "weights",
+                    data=data,
+                    color=sns.color_palette(palette, n_colors=len(label)),
+                    label=label,
+                )
+        if not with_colour:
+            data = pd.concat(all_data)
             ax.bar(
                 "features",
                 "weights",
                 data=data,
-                color=sns.color_palette(palette, n_colors=len(label)),
-                label=label,
+                color="grey",
+                label=[*pos_feature_names, *neg_feature_names],
             )
-
         ax.set_xlabel("Features", fontsize=14)
         ax.set_ylabel("SurvLIME value", fontsize=14)
         ax.set_title("Feature importance", fontsize=16, fontweight="bold")
@@ -349,6 +361,7 @@ class SurvLimeExplainer:
         feature_names: Optional[List[str]] = None,
         scale_with_data_point: bool = False,
         figure_path: Optional[str] = None,
+        with_colour: bool = True,
     ) -> None:
         """Generates explanations for a prediction.
 
@@ -357,6 +370,7 @@ class SurvLimeExplainer:
             feature_names Optional[List[str]]): names of the features.
             scale_with_data_point (bool): whether to perform the elementwise multiplication between the point to be explained and the coefficients.
             figure_path (Optional[str]): path to save the figure.
+            with_colour (bool): boolean indicating whether the colour palette for positive coefficients is different than thecolour palette for negative coefficients. Default is set to True.
 
         Returns:
             None.
@@ -413,13 +427,22 @@ class SurvLimeExplainer:
 
         _, ax = plt.subplots(figsize=figsize)
         ax.tick_params(labelrotation=90)
-        p = sns.boxenplot(
-            x="variable",
-            y="value",
-            data=data_melt,
-            palette=custom_pal,
-            ax=ax,
-        )
+        if with_colour:
+            p = sns.boxenplot(
+                x="variable",
+                y="value",
+                data=data_melt,
+                palette=custom_pal,
+                ax=ax,
+            )
+        else:
+            p = sns.boxenplot(
+                x="variable",
+                y="value",
+                data=data_melt,
+                color="grey",
+                ax=ax,
+            )
         ax.tick_params(labelrotation=90)
         p.set_xlabel("Features", fontsize=14)
         p.set_ylabel("SurvLIME value", fontsize=14)
