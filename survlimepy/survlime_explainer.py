@@ -1,4 +1,3 @@
-from functools import partial
 import logging
 from copy import deepcopy
 from typing import Callable, Tuple, Union, List, Literal, Optional
@@ -22,11 +21,8 @@ class SurvLimeExplainer:
         training_events: Union[np.ndarray, pd.Series, List[Union[bool, float, int]]],
         training_times: Union[np.ndarray, pd.Series, List[Union[float, int]]],
         model_output_times: Optional[np.ndarray] = None,
-        categorical_features: Optional[List[int]] = None,
         H0: Optional[Union[np.ndarray, List[float], StepFunction]] = None,
         kernel_width: Optional[float] = None,
-        kernel_distance: str = "euclidean",
-        kernel_fn: Optional[Callable] = None,
         functional_norm: Union[float, str] = 2,
         random_state: Optional[int] = None,
     ) -> None:
@@ -37,11 +33,8 @@ class SurvLimeExplainer:
             training_events (Union[np.ndarray, pd.Series, List[Union[bool, float, int]]]): training events indicator.
             training_times (Union[np.ndarray, pd.Series, List[Union[float, int]]]): training times to event.
             model_output_times (Optional[np.ndarray]): output times of the bb model.
-            categorical_features (Optional[List[int]]): list of integers indicating the categorical features.
             H0 (Optional[Union[np.ndarray, List[float], StepFunction]]): baseline cumulative hazard.
-            kernel_width (Optional[List[float]]): width of the kernel to be used for computing distances.
-            kernel_distance (str): metric to be used for computing neighbours distance to the original point.
-            kernel_fn (Optional[Callable]): kernel function to be used for computing distances.
+            kernel_width (Optional[List[float]]): width of the kernel to be used to generate the neighbours and to compute distances.
             functional_norm (Optional[Union[float, str]]): functional norm to calculate the distance between the Cox model and the black box model.
             random_state (Optional[int]): number to be used for random seeds.
 
@@ -52,31 +45,34 @@ class SurvLimeExplainer:
         self.training_features = training_features
         self.training_events = training_events
         self.training_times = training_times
-        self.categorical_features = categorical_features
         self.model_output_times = model_output_times
         self.computed_weights = None
         self.montecarlo_weights = None
         self.is_data_frame = isinstance(self.training_features, pd.DataFrame)
+        self.is_np_array = isinstance(self.training_features, np.ndarray)
+        if not (self.is_data_frame or self.is_np_array):
+            raise TypeError(
+                "training_features must be either a numpy array or a pandas DataFrame."
+            )
         if self.is_data_frame:
             self.feature_names = self.training_features.columns
+            self.training_features_np = training_features.to_numpy()
         else:
             self.feature_names = [
                 f"feature_{i}" for i in range(self.training_features.shape[1])
             ]
+            self.training_features_np = np.copy(training_features)
         self.H0 = H0
+        self.num_individuals = self.training_features.shape[0]
+        self.num_features = self.training_features.shape[1]
 
         if kernel_width is None:
-            kernel_width = np.sqrt(self.training_features.shape[1]) * 0.75
-        kernel_width = float(kernel_width)
+            num_sigma_opt = 4
+            den_sigma_opt = self.num_individuals * (self.num_features + 2)
+            pow_sigma_opt = 1 / (self.num_features + 4)
+            kernel_default = (num_sigma_opt / den_sigma_opt) ** pow_sigma_opt
+            self.kernel_width = kernel_default
 
-        self.kernel_distance = kernel_distance
-
-        if kernel_fn is None:
-
-            def kernel_fn(d: np.ndarray, kernel_width: float) -> np.ndarray:
-                return np.sqrt(np.exp(-(d**2) / kernel_width**2))
-
-        self.kernel_fn = partial(kernel_fn, kernel_width=kernel_width)
         self.functional_norm = functional_norm
 
     def transform_data(
@@ -145,9 +141,9 @@ class SurvLimeExplainer:
 
         # Generate neighbours
         neighbours_generator = NeighboursGenerator(
-            training_features=self.training_features,
+            training_features=self.training_features_np,
             data_row=self.data_point,
-            categorical_features=self.categorical_features,
+            sigma=self.kernel_width,
             random_state=self.random_state,
         )
 
@@ -156,14 +152,14 @@ class SurvLimeExplainer:
 
         # Solve optimisation problem
         opt_funcion_maker = OptFuncionMaker(
+            training_features=self.training_features_np,
             training_events=self.training_events,
             training_times=self.training_times,
+            kernel_width=self.kernel_width,
             neighbours=scaled_data,
             neighbours_transformed=scaled_data_transformed,
             num_samples=num_samples,
             data_point=self.data_point,
-            kernel_distance=self.kernel_distance,
-            kernel_fn=self.kernel_fn,
             predict_fn=predict_fn,
             type_fn=type_fn,
             functional_norm=self.functional_norm,
@@ -183,6 +179,7 @@ class SurvLimeExplainer:
         feature_names: Optional[List[str]] = None,
         scale_with_data_point: bool = False,
         figure_path: Optional[str] = None,
+        with_colour: bool = True,
     ) -> None:
         # Create docstring of the function
         """Plots the weights of the computed COX model.
@@ -192,6 +189,7 @@ class SurvLimeExplainer:
             feature_names (Optional[List[str]]): names of the features.
             scale_with_data_point (bool): whether to perform the elementwise multiplication between the point to be explained and the coefficients.
             figure_path (Optional[str]): path to save the figure.
+            with_colour (bool): boolean indicating whether the colour palette for positive coefficients is different than thecolour palette for negative coefficients. Default is set to True.
 
         Returns:
             None.
@@ -235,21 +233,31 @@ class SurvLimeExplainer:
         neg_feature_names = [
             f for f, w in zip(sorted_feature_names, sorted_weights) if w < 0
         ]
-
+        all_data = []
         for label, weights_separated, palette in zip(
             [pos_feature_names, neg_feature_names],
             [pos_weights, neg_weights],
             ["Reds_r", "Blues"],
         ):
             data = pd.DataFrame({"features": label, "weights": weights_separated})
+            all_data.append(data)
+            if with_colour:
+                ax.bar(
+                    "features",
+                    "weights",
+                    data=data,
+                    color=sns.color_palette(palette, n_colors=len(label)),
+                    label=label,
+                )
+        if not with_colour:
+            data = pd.concat(all_data)
             ax.bar(
                 "features",
                 "weights",
                 data=data,
-                color=sns.color_palette(palette, n_colors=len(label)),
-                label=label,
+                color="grey",
+                label=[*pos_feature_names, *neg_feature_names],
             )
-
         ax.set_xlabel("Features", fontsize=14)
         ax.set_ylabel("SurvLIME value", fontsize=14)
         ax.set_title("Feature importance", fontsize=16, fontweight="bold")
@@ -353,6 +361,7 @@ class SurvLimeExplainer:
         feature_names: Optional[List[str]] = None,
         scale_with_data_point: bool = False,
         figure_path: Optional[str] = None,
+        with_colour: bool = True,
     ) -> None:
         """Generates explanations for a prediction.
 
@@ -361,6 +370,7 @@ class SurvLimeExplainer:
             feature_names Optional[List[str]]): names of the features.
             scale_with_data_point (bool): whether to perform the elementwise multiplication between the point to be explained and the coefficients.
             figure_path (Optional[str]): path to save the figure.
+            with_colour (bool): boolean indicating whether the colour palette for positive coefficients is different than thecolour palette for negative coefficients. Default is set to True.
 
         Returns:
             None.
@@ -417,13 +427,22 @@ class SurvLimeExplainer:
 
         _, ax = plt.subplots(figsize=figsize)
         ax.tick_params(labelrotation=90)
-        p = sns.boxenplot(
-            x="variable",
-            y="value",
-            data=data_melt,
-            palette=custom_pal,
-            ax=ax,
-        )
+        if with_colour:
+            p = sns.boxenplot(
+                x="variable",
+                y="value",
+                data=data_melt,
+                palette=custom_pal,
+                ax=ax,
+            )
+        else:
+            p = sns.boxenplot(
+                x="variable",
+                y="value",
+                data=data_melt,
+                color="grey",
+                ax=ax,
+            )
         ax.tick_params(labelrotation=90)
         p.set_xlabel("Features", fontsize=14)
         p.set_ylabel("SurvLIME value", fontsize=14)
