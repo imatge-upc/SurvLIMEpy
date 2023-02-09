@@ -1,7 +1,7 @@
 # SurvLIMEpy
 
 <p align="center">
-    <img src="./logo.png" width="256" height="256">
+    <img src="https://github.com/imatge-upc/SurvLIMEpy/blob/main/logo.png?raw=true" width="256" height="256">
 </p>
 
 
