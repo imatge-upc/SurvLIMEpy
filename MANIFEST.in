@@ -1,0 +1,4 @@
+# MANIFEST.in
+
+include pyproject.toml
+logo.png
