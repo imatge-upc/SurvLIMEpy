@@ -1,4 +1,4 @@
 # MANIFEST.in
 
 include pyproject.toml
-logo.png
+include logo.png
