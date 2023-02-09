@@ -17,14 +17,14 @@ classifiers = [
 ]
 requires-python = ">=3.8"
 dependencies = [
-    "numpy",
-    "cvxpy",
-    "scikit-survival",
-    "scikit-learn",
-    "pandas",
-    "tqdm",
-    "seaborn",
-    "matplotlib",
+    "numpy==1.20.0",
+    "cvxpy==1.2.2",
+    "scikit-survival==0.18.0",
+    "scikit-learn==1.1.2",
+    "pandas==1.1.5",
+    "tqdm==4.62.3",
+    "seaborn==0.11.2",
+    "matplotlib==3.5.0",
 ]
 keywords = [
     "Interpretable Machine Learning",
