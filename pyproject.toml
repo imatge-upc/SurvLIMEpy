@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "survlimepy"
-version = "0.0.4"
+version = "0.0.5"
 description = "A python package implementing SurvLIME algorithm"
 authors = [
     {name = "Carlos Hernández Pérez", email = "crherperez95@gmail.com"},
@@ -43,9 +43,6 @@ repository = "https://github.com/imatge-upc/SurvLIMEpy"
 
 [tool.setuptools]
 include-package-data = true
-
-[tool.setuptools.packages.find]
-where = ["survlimepy"]
 
 [tool.setuptools.package-data]
 "survlimepy.datasets" = ["*.csv"]
