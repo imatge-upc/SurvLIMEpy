@@ -212,7 +212,7 @@ class OptFuncionMaker:
             weight (np.ndarray): the kernel weight.
         """
         num = -(d**2)
-        den = 2 * self.kernel_width
+        den = 2 * (self.kernel_width**2)
         weight = np.exp(num / den)
         return weight
 
