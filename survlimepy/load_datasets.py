@@ -37,29 +37,6 @@ class Loader:
             self.feature_columns = ["bili", "stage", "riskscore", "trt"]
             self.categorical_columns = []
             self.df = pd.read_csv(udca_path)
-        elif dataset_name == "pbc":
-            self.feature_columns = [
-                "age",
-                "bili",
-                "chol",
-                "albumin",
-                "ast",
-                "ascites",
-                "copper",
-                "alk.phos",
-                "trig",
-                "platelet",
-                "protime",
-                "trt",
-                "sex",
-                "hepato",
-                "spiders",
-                "edema",
-                "stage",
-            ]
-            self.categorical_columns = ["edema", "stage"]
-            self.df = pd.read_csv(pbc_path)
-            self.df["sex"] = [1 if x == "f" else 0 for x in self.df["sex"]]
         elif dataset_name == "lung":
             self.feature_columns = [
                 "inst",
@@ -80,28 +57,9 @@ class Loader:
             # substract 1 to each value of the status column
             self.df["status"] = [x - 1 for x in self.df["status"]]
 
-        elif dataset_name == "synthetic":
-            ## TODO
-            pass
-        elif dataset_name == "heart":
-            self.feature_columns = [
-                "age",
-                "anaemia",
-                "creatinine_phosphokinase",
-                "diabetes",
-                "ejection_fraction",
-                "high_blood_pressure",
-                "platelets",
-                "serum_creatinine",
-                "serum_sodium",
-                "sex",
-                "smoking",
-            ]
-            self.categorical_columns = []
-            self.df = pd.read_csv(heart_path)
         else:
             raise AssertionError(
-                f"The give name {dataset_name} was not found in [veterans, udca, pbc, lung]."
+                f"The give name {dataset_name} was not found in [veterans, udca, lung]."
             )
 
     def load_data(self) -> list([pd.DataFrame, np.ndarray]):
@@ -120,8 +78,6 @@ class Loader:
         events = [x[0] for x in y]
         times = [x[1] for x in y]
         x = self.df[self.feature_columns]
-
-        x = x.fillna(value=x.median(numeric_only=True))
 
         return x, events, times
 
