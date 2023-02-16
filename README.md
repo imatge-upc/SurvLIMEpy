@@ -1,9 +1,12 @@
 # SurvLIMEpy
-
 <p align="center">
     <img src="https://github.com/imatge-upc/SurvLIMEpy/blob/main/logo.png?raw=true" width="256" height="256">
 </p>
 
+-----------------
+[![PyPI Latest Release](https://img.shields.io/pypi/v/survlimepy.svg)](https://pypi.org/project/survlimepy/)
+[![License](https://img.shields.io/pypi/l/survlimepy.svg)](https://github.com/imatge-upc/SurvLIMEpy/blob/main/LICENSE)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 **SurvLIMEpy** implements SurvLIME algorithm (**Survival Local Interpretable Model-agnostic Explanation**), a local interpretable algorithm for Survival Analysis, which was proposed in [this paper](https://www.sciencedirect.com/science/article/abs/pii/S0950705120304044).
 
@@ -23,7 +26,7 @@ from survlimepy.load_datasets import Loader
 from sksurv.linear_model import CoxPHSurvivalAnalysis
 
 # Load UDCA dataset
-loader = Loader(dataset_name='udca')
+loader = Loader(dataset_name='veterans')
 X, events, times = loader.load_data()
 
 # Train a model
