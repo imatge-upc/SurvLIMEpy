@@ -103,7 +103,6 @@ class Loader:
                 x_pre[cat_feat], drop_first=True, prefix=cat_feat
             )
             new_names = df_dummy_i.columns
-            # x_pre[names[1:]] = pd.get_dummies(x_pre[cat_feat], drop_first=True)
             x_pre[new_names] = df_dummy_i
             x_pre.drop(cat_feat, inplace=True, axis=1)
 
@@ -113,9 +112,6 @@ class Loader:
         X_train, X_test, y_train, y_test = train_test_split(
             x_pre.copy(), y, test_size=0.10, random_state=random_seed
         )
-        # X_val, X_test, y_val, y_test = train_test_split(
-        #    X_test.copy(), y_test, test_size=0.5, random_state=random_seed
-        # )
 
         if standarize:
             scaler = StandardScaler()
@@ -125,19 +121,13 @@ class Loader:
                 index=X_train.index,
             )
 
-            #    X_val = pd.DataFrame(
-            #        data=scaler.transform(X_val),
-            #        columns=X_val.columns,
-            #        index=X_val.index,
-            #    )
-
             X_test = pd.DataFrame(
                 data=scaler.transform(X_test),
                 columns=X_test.columns,
                 index=X_test.index,
             )
 
-        return [X_train, y_train], [X_test, y_test]  # [X_val, y_val]
+        return [X_train, y_train], [X_test, y_test]
 
 
 class RandomSurvivalData:
