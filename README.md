@@ -25,7 +25,7 @@ from survlimepy import SurvLimeExplainer
 from survlimepy.load_datasets import Loader
 from sksurv.linear_model import CoxPHSurvivalAnalysis
 
-# Load UDCA dataset
+# Load the dataset
 loader = Loader(dataset_name='veterans')
 X, events, times = loader.load_data()
 
