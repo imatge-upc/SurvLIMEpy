@@ -64,7 +64,15 @@ Our package can manage multiple types of survival models as long as the function
 We choose to ensure the integration of these algorithms with **SurvLIMEpy** as they are the most predominant in the field. Note that if a new survival package is developed, **SurvLIMEpy** will support it as long as the output provided by the predict function is a vector of length $q \leq m$. In [this notebook](https://github.com/imatge-upc/SurvLIME-experiments/blob/main/notebooks/multiple_models.ipynb) there are several examples with different models.
 
 ## Citations
-Please if you use this package, do not forget to cite us. citation data available soon.
+Please if you use this package, do not forget to cite us:
+```
+@article{pachon2023survlimepy,
+  title={SurvLIMEpy: A Python package implementing SurvLIME},
+  author={Pach{\'o}n-Garc{\'\i}a, Cristian and Hern{\'a}ndez-P{\'e}rez, Carlos and Delicado, Pedro and Vilaplana, Ver{\'o}nica},
+  journal={arXiv preprint arXiv:2302.10571},
+  year={2023}
+}
+```
 
 ## References
 
