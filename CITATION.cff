@@ -14,7 +14,6 @@ authors:
   given-names: "Verónica"
   orcid: "https://orcid.org/0000-0001-6924-9961"
 title: "SurvLIMEpy: A Python package implementing SurvLIME}"
-type: article
 publisher: "arXiv"
 year: 2023
 doi: 10.48550/ARXIV.2302.10571
