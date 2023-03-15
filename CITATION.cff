@@ -1,0 +1,40 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+- family-names: "Pachón-García"
+  given-names: "Cristian"
+  orcid: "https://orcid.org/0000-0001-9518-4874"
+- family-names: "Hernández-Pérez"
+  given-names: "Carlos"
+  orcid: "https://orcid.org/0000-0002-0054-8573"
+- family-names: "Delicado"
+  given-names: "Pedro"
+  orcid: "https://orcid.org/0000-0003-3933-4852"
+- family-names: "Vilaplana"
+  given-names: "Verónica"
+  orcid: "https://orcid.org/0000-0001-6924-9961"
+title: "SurvLIMEpy: A Python package implementing SurvLIME"
+license-url: "https://github.com/imatge-upc/SurvLIMEpy/blob/main/LICENSE"
+repository-code: "https://github.com/imatge-upc/SurvLIMEpy"
+url: "https://github.com/imatge-upc/SurvLIMEpy"
+preferred-citation:
+  type: article
+  authors:
+  - family-names: "Pachón-García"
+    given-names: "Cristian"
+    orcid: "https://orcid.org/0000-0001-9518-4874"
+  - family-names: "Hernández-Pérez"
+    given-names: "Carlos"
+    orcid: "https://orcid.org/0000-0002-0054-8573"
+  - family-names: "Delicado"
+    given-names: "Pedro"
+    orcid: "https://orcid.org/0000-0003-3933-4852"
+  - family-names: "Vilaplana"
+    given-names: "Verónica"
+    orcid: "https://orcid.org/0000-0001-6924-9961"
+  doi: "10.48550/ARXIV.2302.10571"
+  journal: "arXiv"
+  publisher: "arXiv"
+  year: 2023
+  month: 3
+  title: "SurvLIMEpy: A Python package implementing SurvLIME"
