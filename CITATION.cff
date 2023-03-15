@@ -15,6 +15,9 @@ authors:
   orcid: "https://orcid.org/0000-0001-6924-9961"
 title: "SurvLIMEpy: A Python package implementing SurvLIME}"
 type: article
+publisher: arXiv
+year: 2023
+doi: 10.48550/ARXIV.2302.10571
 license-url: "https://github.com/imatge-upc/SurvLIMEpy/blob/main/LICENSE"
 repository-code: "https://github.com/imatge-upc/SurvLIMEpy"
 url: "https://github.com/imatge-upc/SurvLIMEpy"
