@@ -11,7 +11,15 @@ from sksurv.functions import StepFunction
 from survlimepy.utils.optimisation import OptFuncionMaker
 from survlimepy.utils.neighbours_generator import NeighboursGenerator
 
-
+### Aditions needed forn the reviewer
+from survlimepy.utils.predict import predict_wrapper
+from sksurv.nonparametric import nelson_aalen_estimator
+from sklearn.metrics import pairwise_distances
+import cvxpy as cp
+import timeit
+import warnings
+from tqdm import tqdm
+warnings.filterwarnings("ignore")
 class SurvLimeExplainer:
     """Look for the coefficient of a COX model."""
 
@@ -103,6 +111,7 @@ class SurvLimeExplainer:
         max_difference_time_allowed: Optional[float] = None,
         max_hazard_value_allowed: Optional[float] = None,
         verbose: bool = False,
+        scalar_form: bool = False
     ) -> np.ndarray:
         """Generates explanations for a prediction.
 
@@ -118,6 +127,13 @@ class SurvLimeExplainer:
         Returns:
             cox_values (np.ndarray): obtained weights from the convex problem.
         """
+        self.max_difference_time_allowed = max_difference_time_allowed
+        self.max_hazard_value_allowed = max_hazard_value_allowed
+        self.num_samples = num_samples
+        self.type_fn = type_fn
+        self.predict_fn = predict_fn
+        self.limit_H_warning = 99
+        
         # To be used while plotting
         if isinstance(data_row, list):
             self.data_point = np.array(data_row).reshape(1, -1)
@@ -150,28 +166,101 @@ class SurvLimeExplainer:
         scaled_data = neighbours_generator.generate_neighbours(num_samples=num_samples)
         scaled_data_transformed = self.transform_data(data=scaled_data)
 
-        # Solve optimisation problem
-        opt_funcion_maker = OptFuncionMaker(
-            training_features=self.training_features_np,
-            training_events=self.training_events,
-            training_times=self.training_times,
-            kernel_width=self.kernel_width,
-            neighbours=scaled_data,
-            neighbours_transformed=scaled_data_transformed,
-            num_samples=num_samples,
-            data_point=self.data_point,
-            predict_fn=predict_fn,
-            type_fn=type_fn,
-            functional_norm=self.functional_norm,
-            model_output_times=self.model_output_times,
-            H0=self.H0,
-            max_difference_time_allowed=max_difference_time_allowed,
-            max_hazard_value_allowed=max_hazard_value_allowed,
-            verbose=verbose,
-        )
-        b = opt_funcion_maker.solve_problem()
+
+        if scalar_form:
+            b = self.prueba(data_row,
+                                    scaled_data_transformed,
+                                    predict_fn,
+                                    type_fn,
+                                    num_samples,
+                                    max_difference_time_allowed,
+                                    max_hazard_value_allowed
+                                    )
+            
+        else:
+            # Solve optimisation problem
+            opt_funcion_maker = OptFuncionMaker(
+                training_features=self.training_features_np,
+                training_events=self.training_events,
+                training_times=self.training_times,
+                kernel_width=self.kernel_width,
+                neighbours=scaled_data,
+                neighbours_transformed=scaled_data_transformed,
+                num_samples=num_samples,
+                data_point=self.data_point,
+                predict_fn=predict_fn,
+                type_fn=type_fn,
+                functional_norm=self.functional_norm,
+                model_output_times=self.model_output_times,
+                H0=self.H0,
+                max_difference_time_allowed=max_difference_time_allowed,
+                max_hazard_value_allowed=max_hazard_value_allowed,
+                verbose=verbose,
+            )
+            b = opt_funcion_maker.solve_problem()
         self.computed_weights = np.copy(b)
         return b
+
+    def prueba(self, data,
+                               neighbours,
+                               predict_fn,
+                               type_fn,
+                               num_samples,
+                               max_difference_time_allowed,
+                               max_hazard_value_allowed) -> np.ndarray:
+        
+        epsilon = 0.00000001
+        self.epsilon = epsilon
+        self.neighbours = neighbours
+        # Compute distances for the neighbours
+        distances = pairwise_distances(
+            neighbours, data, metric=self.weighted_euclidean_distance
+        ).ravel()
+        weights = self.kernel_fn(distances)
+        weights = np.reshape(weights, newshape=(num_samples, 1))
+
+        self.unique_times_to_event = np.sort(np.unique(self.training_times))
+        self.m = self.unique_times_to_event.shape[0]
+
+        if self.model_output_times is None:
+            self.model_output_times = np.copy(self.unique_times_to_event)
+        else:
+            self.model_output_times = self.model_output_times
+        
+        self.neighbours_transformed = neighbours
+        predictions = self.get_predictions()
+        log_correction = [np.divide(np.array(x), np.log(np.array(x)+0.0001)) for x in predictions]
+
+        nelson_aalen = nelson_aalen_estimator(self.training_events, self.training_times)
+        H0 = nelson_aalen[1]
+        m = H0.shape[0]
+        H0 = np.reshape(H0, newshape=(m, 1))
+        start_time = timeit.default_timer()
+
+        
+        num_features = data.shape[1]# Is there a nicer way to obtain this rather than using the scaler?
+        num_times = len(set(self.unique_times_to_event)) - 1
+        num_pat = len(weights) # Is there a nicer way to obtain this rather than usng the length of the weights
+        times_to_fill = list(set(self.unique_times_to_event)); times_to_fill.sort()
+        
+        b = cp.Variable(num_features)
+
+        # These next two lines are the implementation of the equation (21) of the paper
+        cost = [weights[k]*cp.square(log_correction[k][j])*cp.square(cp.log(predictions[k][j]+epsilon) - cp.log(H0[j]+epsilon) - b @ neighbours[k])*(times_to_fill[j+1]-times_to_fill[j])\
+                 for k in tqdm(range(num_pat)) for j in range(num_times)] # 
+        
+        print(f'time creating the cost list {timeit.default_timer() - start_time}')
+        start_time = timeit.default_timer()
+
+        cost_sum = cp.sum(cost)
+        print(f'time summing the cost list {timeit.default_timer() - start_time}')
+        start_time = timeit.default_timer()
+        prob = cp.Problem(cp.Minimize(cost_sum))
+
+
+        opt_val = prob.solve(verbose=True, max_iter=100000)
+        print(f'time solving the problem {timeit.default_timer() - start_time}')
+        return b.value
 
     def plot_weights(
         self,
@@ -273,188 +362,86 @@ class SurvLimeExplainer:
 
         plt.show()
 
-    def montecarlo_explanation(
-        self,
-        data: Union[pd.DataFrame, pd.Series, np.ndarray, List],
-        predict_fn: Callable,
-        type_fn: Literal["survival", "cumulative"] = "cumulative",
-        num_samples: int = 1000,
-        num_repetitions: int = 10,
-        max_difference_time_allowed: Optional[float] = None,
-        max_hazard_value_allowed: Optional[float] = None,
-        verbose: bool = False,
-    ) -> pd.DataFrame:
-        """Generates explanations for a prediction.
+    def compute_nelson_aalen_estimator(
+        event: np.ndarray, time: np.ndarray
+    ) -> np.ndarray:
+        """Compute Nelson-Aalen estimator.
 
         Args:
-            data (Union[pd.DataFrame, pd.Series, np.ndarray, List]): data points to be explained.
-            predict_fn (Callable): function that computes cumulative hazard.
-            type_fn (Literal["survival", "cumulative"]): whether predict_fn is the cumulative hazard funtion or survival function.
-            num_samples (int): number of neighbours to use.
-            num_repetitions (int): number of times to repeat the explanation.
-            max_difference_time_allowed (Optional[float]): maximum difference between times allowed. If a difference exceeds this value, then max_difference_time_allowed will be used.
-            max_hazard_value_allowed (Optional[float]): maximum hazard value allowed. If a prediction exceeds this value, then max_hazard_value_allows will be used.
-            verbose (bool): whether or not to show cvxpy messages.
+            event (np.ndarray): array of events.
+            time (np.ndarray): array of times.
 
         Returns:
-            montecarlo_explanation (pd.DataFrame): dataframe with the montecarlo explanation.
+            H0 (np.ndarray): the Nelson-Aalen estimator
         """
-        if isinstance(data, pd.DataFrame):
-            data_transformed = data.to_numpy()
-        elif isinstance(data, pd.Series):
-            data_transformed = data.to_numpy().reshape(1, -1)
-        elif isinstance(data, np.ndarray):
-            n_dim = len(data.shape)
-            if n_dim == 1:
-                n_rows = 1
-            else:
-                n_rows = data.shape[0]
-            data_transformed = np.reshape(data, newshape=(n_rows, -1))
-        elif isinstance(data, list):
-            data_transformed = np.array(data).reshape(1, -1)
+        nelson_aalen = nelson_aalen_estimator(event, time)
+        H0 = nelson_aalen[1]
+        m = H0.shape[0]
+        H0 = np.reshape(H0, newshape=(m, 1))
+        return H0
+
+    def weighted_euclidean_distance(self, x: np.ndarray, y: np.ndarray) -> np.ndarray:
+        """Compute the weighted Euclidean distance.
+
+        Args:
+            x (np.ndarray): the first array.
+            y (np.ndarray): the second array.
+
+        Returns:
+            distance (np.ndarray): the distance between the two arrays.
+        """
+        diff = x - y
+        self.sd_features = np.std(
+            self.training_features, axis=0, dtype=self.training_features.dtype
+        )
+        self.sd_sq = np.square(self.sd_features)
+        diff_sq = np.square(diff)
+        div = np.divide(diff_sq, self.sd_sq)
+        distance = np.sqrt(np.sum(div))
+        return distance
+
+    def kernel_fn(self, d):
+        """Compute the kernel function.
+
+        Args:
+            d (np.ndarray): the distance.
+
+        Returns:
+            weight (np.ndarray): the kernel weight.
+        """
+        num = -(d**2)
+        den = 2 * (self.kernel_width**2)
+        weight = np.exp(num / den)
+        return weight
+
+    def get_predictions(self) -> np.ndarray:
+        """Compute the prediction for each neighbour.
+
+        Args:
+            None
+
+        Returns:
+            H (np.ndarray): the prediction.
+        """
+        # Compute predictions
+        FN_pred = predict_wrapper(
+            predict_fn=self.predict_fn,
+            data=self.neighbours_transformed,
+            unique_times_to_event=self.unique_times_to_event,
+            model_output_times=self.model_output_times,
+        )
+        if self.type_fn == "survival":
+            H_score = -np.log(FN_pred + self.epsilon)
         else:
-            raise ValueError(
-                "data must be a pandas DataFrame, a pandas Series, a numpy array or a list."
-            )
-        self.matrix_to_explain = deepcopy(data_transformed)
-        all_solved = True
-        total_rows = data_transformed.shape[0]
-        total_cols = data_transformed.shape[1]
-        weights = np.empty(shape=(total_rows, total_cols))
-        for i_row in tqdm(range(total_rows)):
-            current_row = data_transformed[i_row]
-            weights_current_row = []
-            i_rep = 0
-            while i_rep < num_repetitions:
-                # sample data point from the dataset
-                b = self.explain_instance(
-                    data_row=current_row,
-                    predict_fn=predict_fn,
-                    type_fn=type_fn,
-                    num_samples=num_samples,
-                    max_difference_time_allowed=max_difference_time_allowed,
-                    max_hazard_value_allowed=max_hazard_value_allowed,
-                    verbose=verbose,
-                )
-                are_there_any_nan_value = np.isnan(b).any()
-
-                if are_there_any_nan_value:
-                    all_solved = False
-                else:
-                    weights_current_row.append(b)
-                    i_rep += 1
-
-            weights_current_row = np.array(weights_current_row)
-            mean_weight_row = np.mean(weights_current_row, axis=0)
-            weights[i_row] = mean_weight_row
-
-        if not all_solved:
+            H_score = np.copy(FN_pred)
+        max_H_score = np.max(H_score)
+        if self.max_hazard_value_allowed is None and max_H_score > self.limit_H_warning:
             logging.warning(
-                "There were some simulations without a solution. Try to run it with verbose=True."
+                f"The prediction function produces extreme values: {max_H_score}. In terms of survival, Pr(Survival) is almost 0. Try to set max_hazard_value_allowed parameter to clip this value."
             )
-        self.montecarlo_weights = weights
-        return weights
-
-    def plot_montecarlo_weights(
-        self,
-        figsize: Tuple[int, int] = (10, 10),
-        feature_names: Optional[List[str]] = None,
-        scale_with_data_point: bool = False,
-        figure_path: Optional[str] = None,
-        with_colour: bool = True,
-    ) -> None:
-        """Generates explanations for a prediction.
-
-        Args:
-            figsize (Tuple[int, int]): size of the figure.
-            feature_names Optional[List[str]]): names of the features.
-            scale_with_data_point (bool): whether to perform the elementwise multiplication between the point to be explained and the coefficients.
-            figure_path (Optional[str]): path to save the figure.
-            with_colour (bool): boolean indicating whether the colour palette for positive coefficients is different than thecolour palette for negative coefficients. Default is set to True.
-
-        Returns:
-            None.
-        """
-        if self.montecarlo_weights is None:
-            raise ValueError(
-                "Monte-Carlo weights not computed yet. Call montecarlo_explanation first before using this function."
+        if self.max_hazard_value_allowed is not None:
+            H_score = np.clip(
+                a=H_score, a_min=None, a_max=self.max_hazard_value_allowed
             )
-        else:
-            are_there_any_nan = np.isnan(self.montecarlo_weights).any()
-            if are_there_any_nan:
-                raise ValueError("Some of the coefficients contain nan values.")
-
-        total_cols = self.montecarlo_weights.shape[1]
-
-        if feature_names is not None:
-            if len(feature_names) != total_cols:
-                raise TypeError(f"feature_names must have {total_cols} elements.")
-            col_names = feature_names
-        else:
-            col_names = self.feature_names
-
-        if scale_with_data_point:
-            scaled_data = np.multiply(self.montecarlo_weights, self.matrix_to_explain)
-
-        else:
-            scaled_data = self.montecarlo_weights
-        data = pd.DataFrame(data=scaled_data, columns=col_names)
-
-        sns.set()
-        median_up = {}
-        median_down = {}
-        threshold = 0
-        for (columnName, columnData) in data.items():
-            median_value = np.median(columnData)
-            if median_value > threshold:
-                median_up[columnName] = median_value
-            else:
-                median_down[columnName] = median_value
-
-        median_up = dict(
-            sorted(median_up.items(), key=lambda item: item[1], reverse=True)
-        )
-        median_down = dict(
-            sorted(median_down.items(), key=lambda item: item[1], reverse=True)
-        )
-        pal_up = sns.color_palette("Reds_r", n_colors=len(median_up))
-        pal_down = sns.color_palette("Blues", n_colors=len(median_down))
-        colors_up = {key: val for key, val in zip(median_up.keys(), pal_up)}
-        colors_down = {key: val for key, val in zip(median_down.keys(), pal_down)}
-        custom_pal = {**colors_up, **colors_down}
-        data_reindex = data.reindex(columns=custom_pal.keys())
-        data_melt = pd.melt(data_reindex)
-
-        _, ax = plt.subplots(figsize=figsize)
-        ax.tick_params(labelrotation=90)
-        if with_colour:
-            p = sns.boxenplot(
-                x="variable",
-                y="value",
-                data=data_melt,
-                palette=custom_pal,
-                ax=ax,
-            )
-        else:
-            p = sns.boxenplot(
-                x="variable",
-                y="value",
-                data=data_melt,
-                color="grey",
-                ax=ax,
-            )
-        ax.tick_params(labelrotation=90)
-        p.set_xlabel("Features", fontsize=14)
-        p.set_ylabel("SurvLIME value", fontsize=14)
-        p.yaxis.grid(True)
-        p.xaxis.grid(True)
-
-        p.set_title("Feature importance", fontsize=16, fontweight="bold")
-
-        plt.xticks(fontsize=16, rotation=90)
-        plt.yticks(fontsize=14, rotation=0)
-
-        if figure_path is not None:
-            plt.savefig(figure_path, dpi=200, bbox_inches="tight")
-
-        plt.show()
+        H = np.reshape(np.array(H_score), newshape=(self.num_samples, self.m))
+        return H

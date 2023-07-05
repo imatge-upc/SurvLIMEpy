@@ -322,7 +322,6 @@ class OptFuncionMaker:
         # Get predictions
         H = self.get_predictions()
         LnH = np.log(H + self.epsilon)
-
         # Compute the log correction
         log_correction = np.divide(H, LnH)
 
