@@ -10,9 +10,7 @@ from sksurv.util import Surv
 data_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), "datasets")
 veteran_path = os.path.join(data_path, "veteran.csv")
 udca_path = os.path.join(data_path, "udca_dataset.csv")
-pbc_path = os.path.join(data_path, "pbc_dataset.csv")
 lung_path = os.path.join(data_path, "lung_dataset.csv")
-heart_path = os.path.join(data_path, "heart_dataset.csv")
 
 
 class Loader:
