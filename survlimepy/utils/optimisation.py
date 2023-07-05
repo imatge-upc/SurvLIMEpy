@@ -285,26 +285,6 @@ class OptFuncionMaker:
             )
         return delta_t
 
-    def compute_norm(self, matrix: np.ndarray) -> np.ndarray:
-        """Compute the norm of a given matrix.
-
-        Args:
-            matrix (np.ndarray): the matrix over which to compute the norm.
-
-        Returns:
-            matrix_norm (np.ndarray): The norm of the matrix
-        """
-        if isinstance(self.functional_norm, str):
-            matrix_norm = cp.norm(matrix, "inf")
-        elif self.functional_norm == 1:
-            matrix_norm = cp.abs(matrix)
-        elif self.functional_norm % 2 != 0:
-            matrix_abs = cp.abs(matrix)
-            matrix_norm = cp.power(matrix_abs, self.functional_norm)
-        else:
-            matrix_norm = cp.power(matrix, self.functional_norm)
-        return matrix_norm
-
     def solve_problem(self) -> np.ndarray:
         """Solve the optimisation problem.
 
@@ -343,17 +323,25 @@ class OptFuncionMaker:
         Z = self.neighbours @ b
         D = Z @ ones_m_1.T
         E = C - D
-        E_norm = self.compute_norm(matrix=E)
-        V_sq = cp.square(log_correction)
-        F = cp.multiply(E_norm, V_sq)
-        G = F @ delta_t
-        funct = G.T @ w
+        if isinstance(self.functional_norm, float) or isinstance(
+            self.functional_norm, int
+        ):
+            E_prod = cp.multiply(E, log_correction)
+            E_abs = cp.abs(E_prod)
+            E_pow = cp.power(E_abs, self.functional_norm)
+            E_time = E_pow @ delta_t
+        else:
+            E_prod = cp.multiply(E, log_correction)
+            E_abs = cp.abs(E_prod)
+            E_time = cp.norm(E_abs, "inf", axis=1)
+
+        funct = E_time.T @ w
 
         # Solving the problem
         try:
             objective = cp.Minimize(funct)
             prob = cp.Problem(objective)
-            prob.solve(solver="OSQP", verbose=self.verbose, eps_abs=1e-3, eps_rel=1e-3)
+            prob.solve(solver='ECOS', abstol=1e-2, reltol=1e-2, verbose=self.verbose)
             if prob.status not in ["infeasible", "unbounded"]:
                 cox_coefficients = b.value[:, 0]
             else:
