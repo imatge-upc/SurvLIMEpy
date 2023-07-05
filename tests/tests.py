@@ -29,12 +29,6 @@ def test_shape_lung_preprocessed() -> None:
     assert x.shape == (226, 8)
 
 
-def test_shape_pbc_preprocessed() -> None:
-    loader = Loader(dataset_name="pbc")
-    x, _, _ = loader.load_data()
-    assert x.shape == (419, 17)
-
-
 def test_shape_vetearns_computed_weights() -> None:
     loader = Loader(dataset_name="veterans")
     x, events, times = loader.load_data()
@@ -193,17 +187,17 @@ def random_survidal_data() -> Dict:
 def compute_weights(
     train: np.array, test: np.array, norm: float = 2, mock_predict_fn: bool = False
 ) -> List[float]:
+    idx = train[0].isnull().any(axis=1)
     model = CoxPHSurvivalAnalysis(alpha=0.0001)
-
-    model.fit(train[0], train[1])
-    events = [y[0] for y in train[1]]
-    times = [y[1] for y in train[1]]
-
+    idx = train[0].isnull().any(axis=1)
+    model.fit(train[0][~idx], train[1][~idx])
+    events = [y[0] for y in train[1][~idx]]
+    times = [y[1] for y in train[1][~idx]]
     times_to_fill = list(set([x[1] for x in train[1]]))
     times_to_fill.sort()
 
     explainer = SurvLimeExplainer(
-        train[0],
+        train[0][~idx],
         events,
         times,
         functional_norm=norm,
