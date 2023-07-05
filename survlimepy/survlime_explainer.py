@@ -251,13 +251,13 @@ class SurvLimeExplainer:
             all_data.append(data)
 
         if with_colour:
-                ax.bar(
-                    "features",
-                    "weights",
-                    data=data,
-                    color=sns.color_palette(palette, n_colors=len(label)),
-                    label=label,
-                )
+            ax.bar(
+                "features",
+                "weights",
+                data=data,
+                color=sns.color_palette(palette, n_colors=len(label)),
+                label=label,
+            )
         if not with_colour:
             data = pd.concat(all_data)
             ax.bar(
