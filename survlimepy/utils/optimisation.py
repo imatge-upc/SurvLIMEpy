@@ -341,7 +341,7 @@ class OptFuncionMaker:
         try:
             objective = cp.Minimize(funct)
             prob = cp.Problem(objective)
-            prob.solve(solver="ECOS", abstol=1e-2, reltol=1e-2, verbose=self.verbose)
+            prob.solve(solver="ECOS", abstol=1e-3, reltol=1e-3, verbose=self.verbose)
             if prob.status not in ["infeasible", "unbounded"]:
                 cox_coefficients = b.value[:, 0]
             else:
