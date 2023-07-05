@@ -219,11 +219,10 @@ class SurvLimeExplainer:
 
         if absolute_vals:
             title = "Absolute feature importance"
-            y_label = "|SurvLIME value|"
-            weights = -np.abs(weights)
+            weights = np.abs(weights)
+            with_colour = False
         else:
             title = "Feature importance"
-            y_label = "SurvLIME value"
 
         _, ax = plt.subplots(figsize=figsize)
 
@@ -243,34 +242,22 @@ class SurvLimeExplainer:
             f for f, w in zip(sorted_feature_names, sorted_weights) if w < 0
         ]
         all_data = []
-        if absolute_vals:
-            neg_weights = -np.array(neg_weights[::-1])
-            neg_feature_names = neg_feature_names[::-1]
-
         for label, weights_separated, palette in zip(
             [pos_feature_names, neg_feature_names],
             [pos_weights, neg_weights],
             ["Reds_r", "Blues"],
         ):
-            if absolute_vals:
-                weights_separated = np.abs(weights_separated)
-
             data = pd.DataFrame({"features": label, "weights": weights_separated})
             all_data.append(data)
 
-            colors = sns.color_palette(palette, n_colors=len(label))
-            if absolute_vals:
-                colors = colors[::-1]
-
-            if with_colour:
-               bars = ax.bar(
+        if with_colour:
+                ax.bar(
                     "features",
                     "weights",
                     data=data,
-                    color=colors,
+                    color=sns.color_palette(palette, n_colors=len(label)),
                     label=label,
                 )
-
         if not with_colour:
             data = pd.concat(all_data)
             ax.bar(
@@ -281,7 +268,7 @@ class SurvLimeExplainer:
                 label=[*pos_feature_names, *neg_feature_names],
             )
         ax.set_xlabel("Features", fontsize=14)
-        ax.set_ylabel(y_label, fontsize=14)
+        ax.set_ylabel("SurvLIME value", fontsize=14)
         ax.set_title(title, fontsize=16, fontweight="bold")
 
         ax.tick_params(axis="x", labelsize=14, rotation=90)
