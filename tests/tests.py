@@ -227,4 +227,3 @@ def predict_chf_mocked(predict_fn):
         return pred_values[: (total_rows - 1), :]
 
     return inner
-
