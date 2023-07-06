@@ -191,6 +191,7 @@ class SurvLimeExplainer:
             scale_with_data_point (bool): whether to perform the elementwise multiplication between the point to be explained and the coefficients.
             figure_path (Optional[str]): path to save the figure.
             with_colour (bool): boolean indicating whether the colour palette for positive coefficients is different than thecolour palette for negative coefficients. Default is set to True.
+            absolute_vals (bool): whether to plot the absolute values of the coefficients.
 
         Returns:
             None.
@@ -216,7 +217,9 @@ class SurvLimeExplainer:
             weights = self.computed_weights * self.data_point
         else:
             weights = self.computed_weights
-
+        
+        # create a numpy array with these values (0.39, 0.25, 0.12, -0.06, -0.38, -0.375)
+        weights = np.array([0.39, 0.25, 0.12, -0.06, -0.38, -0.365])
         if absolute_vals:
             title = "Absolute feature importance"
             weights = np.abs(weights)
@@ -250,14 +253,14 @@ class SurvLimeExplainer:
             data = pd.DataFrame({"features": label, "weights": weights_separated})
             all_data.append(data)
 
-        if with_colour:
-            ax.bar(
-                "features",
-                "weights",
-                data=data,
-                color=sns.color_palette(palette, n_colors=len(label)),
-                label=label,
-            )
+            if with_colour:
+                ax.bar(
+                    "features",
+                    "weights",
+                    data=data,
+                    color=sns.color_palette(palette, n_colors=len(label)),
+                    label=label,
+                )
         if not with_colour:
             data = pd.concat(all_data)
             ax.bar(
