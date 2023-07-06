@@ -218,8 +218,6 @@ class SurvLimeExplainer:
         else:
             weights = self.computed_weights
         
-        # create a numpy array with these values (0.39, 0.25, 0.12, -0.06, -0.38, -0.375)
-        weights = np.array([0.39, 0.25, 0.12, -0.06, -0.38, -0.365])
         if absolute_vals:
             title = "Absolute feature importance"
             weights = np.abs(weights)
