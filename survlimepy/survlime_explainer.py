@@ -180,6 +180,7 @@ class SurvLimeExplainer:
         scale_with_data_point: bool = False,
         figure_path: Optional[str] = None,
         with_colour: bool = True,
+        absolute_vals: bool = False,
     ) -> None:
         # Create docstring of the function
         """Plots the weights of the computed COX model.
@@ -190,6 +191,7 @@ class SurvLimeExplainer:
             scale_with_data_point (bool): whether to perform the elementwise multiplication between the point to be explained and the coefficients.
             figure_path (Optional[str]): path to save the figure.
             with_colour (bool): boolean indicating whether the colour palette for positive coefficients is different than thecolour palette for negative coefficients. Default is set to True.
+            absolute_vals (bool): whether to plot the absolute values of the coefficients.
 
         Returns:
             None.
@@ -215,6 +217,13 @@ class SurvLimeExplainer:
             weights = self.computed_weights * self.data_point
         else:
             weights = self.computed_weights
+        
+        if absolute_vals:
+            title = "Absolute feature importance"
+            weights = np.abs(weights)
+            with_colour = False
+        else:
+            title = "Feature importance"
 
         _, ax = plt.subplots(figsize=figsize)
 
@@ -241,6 +250,7 @@ class SurvLimeExplainer:
         ):
             data = pd.DataFrame({"features": label, "weights": weights_separated})
             all_data.append(data)
+
             if with_colour:
                 ax.bar(
                     "features",
@@ -260,7 +270,7 @@ class SurvLimeExplainer:
             )
         ax.set_xlabel("Features", fontsize=14)
         ax.set_ylabel("SurvLIME value", fontsize=14)
-        ax.set_title("Feature importance", fontsize=16, fontweight="bold")
+        ax.set_title(title, fontsize=16, fontweight="bold")
 
         ax.tick_params(axis="x", labelsize=14, rotation=90)
         ax.tick_params(axis="y", labelsize=14)
