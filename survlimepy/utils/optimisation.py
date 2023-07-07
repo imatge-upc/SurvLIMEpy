@@ -356,7 +356,7 @@ class OptFuncionMaker:
             objective = cp.Minimize(funct)
             prob = cp.Problem(objective)
 
-            if is_norm_a_number:
+            if is_norm_a_number and self.functional_norm == 2:
                 prob.solve(
                     solver="OSQP", eps_abs=1e-3, eps_rel=1e-3, verbose=self.verbose
                 )
