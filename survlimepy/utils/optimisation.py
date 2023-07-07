@@ -323,25 +323,48 @@ class OptFuncionMaker:
         Z = self.neighbours @ b
         D = Z @ ones_m_1.T
         E = C - D
+        E_prod = cp.multiply(E, log_correction)
+        E_abs = cp.abs(E_prod)
+        is_norm_a_number = None
+
         if isinstance(self.functional_norm, float) or isinstance(
             self.functional_norm, int
         ):
-            E_prod = cp.multiply(E, log_correction)
-            E_abs = cp.abs(E_prod)
+            if self.functional_norm <= 0:
+                raise ValueError("functional_norm must be postive number")
+            is_norm_a_number = True
             E_pow = cp.power(E_abs, self.functional_norm)
-            E_time = E_pow @ delta_t
-        else:
-            E_prod = cp.multiply(E, log_correction)
-            E_abs = cp.abs(E_prod)
-            E_time = cp.norm(E_abs, "inf", axis=1)
+            E_result = E_pow @ delta_t
 
-        funct = E_time.T @ w
+        elif isinstance(self.functional_norm, str):
+            if self.functional_norm != "inf":
+                raise ValueError(
+                    "The only string value allowed for functional_norm is \"inf\""
+                )
+            is_norm_a_number = False
+            E_result = cp.norm(E_abs, self.functional_norm, axis=1)
+
+        else:
+            raise ValueError(
+                "functional_norm must be either a positive number or \"inf\" string"
+            )
+
+        funct = E_result.T @ w
 
         # Solving the problem
         try:
             objective = cp.Minimize(funct)
             prob = cp.Problem(objective)
-            prob.solve(solver="ECOS", abstol=1e-3, reltol=1e-3, verbose=self.verbose)
+
+            if is_norm_a_number and self.functional_norm == 2:
+                prob.solve(
+                    solver="OSQP", eps_abs=1e-3, eps_rel=1e-3, verbose=self.verbose
+                )
+            else:
+                prob.solve(
+                    solver="ECOS", abstol=1e-3, reltol=1e-3, verbose=self.verbose
+                )
+
             if prob.status not in ["infeasible", "unbounded"]:
                 cox_coefficients = b.value[:, 0]
             else:
