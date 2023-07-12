@@ -217,11 +217,11 @@ class SurvLimeExplainer:
             weights = self.computed_weights * self.data_point
         else:
             weights = self.computed_weights
-        
+
+        sign = [-1 if w < 0 else 1 for w in weights]
         if absolute_vals:
             title = "Absolute feature importance"
             weights = np.abs(weights)
-            with_colour = False
         else:
             title = "Feature importance"
 
@@ -230,17 +230,20 @@ class SurvLimeExplainer:
         # sort weights in descending order
         idx_sort = np.argsort(weights)[::-1]
         sorted_weights = weights[idx_sort]
+        sign = np.reshape(np.array(sign), newshape=sorted_weights.shape)
+        sorted_signs = sign[idx_sort]
+
         # sort feature names so that they match the sorted weights
         sorted_feature_names = [feature_names[i] for i in idx_sort]
 
         # divide the sorted weights and sorted feature names into positive and negative
-        pos_weights = [w for w in sorted_weights if w > 0]
+        pos_weights = [w for w, s in zip(sorted_weights, sorted_signs) if s > 0]
         pos_feature_names = [
-            f for f, w in zip(sorted_feature_names, sorted_weights) if w > 0
+            f for f, s in zip(sorted_feature_names, sorted_signs) if s > 0
         ]
-        neg_weights = [w for w in sorted_weights if w < 0]
+        neg_weights = [w for w, s in zip(sorted_weights, sorted_signs) if s < 0]
         neg_feature_names = [
-            f for f, w in zip(sorted_feature_names, sorted_weights) if w < 0
+            f for f, s in zip(sorted_feature_names, sorted_signs) if s < 0
         ]
         all_data = []
         for label, weights_separated, palette in zip(
@@ -251,7 +254,7 @@ class SurvLimeExplainer:
             data = pd.DataFrame({"features": label, "weights": weights_separated})
             all_data.append(data)
 
-            if with_colour:
+            if with_colour and not absolute_vals:
                 ax.bar(
                     "features",
                     "weights",
@@ -259,6 +262,24 @@ class SurvLimeExplainer:
                     color=sns.color_palette(palette, n_colors=len(label)),
                     label=label,
                 )
+
+        if absolute_vals:
+            red_palete = sns.color_palette("Reds_r", n_colors=len(neg_weights))
+            red_palete = red_palete[::-1]
+            blue_palete = sns.color_palette("Blues", n_colors=len(pos_weights))
+            blue_palete = blue_palete[::-1]
+            data = pd.concat(all_data)
+            data['colour'] = red_palete + blue_palete
+            data = data.sort_values(by="weights", axis=0, ascending=False)
+
+            ax.bar(
+                "features",
+                "weights",
+                data=data,
+                color="colour",
+                label="label",
+            )
+
         if not with_colour:
             data = pd.concat(all_data)
             ax.bar(
