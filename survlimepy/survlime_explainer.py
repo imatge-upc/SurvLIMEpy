@@ -265,7 +265,6 @@ class SurvLimeExplainer:
 
         if absolute_vals:
             red_palete = sns.color_palette("Reds_r", n_colors=len(neg_weights))
-            red_palete = red_palete[::-1]
             blue_palete = sns.color_palette("Blues", n_colors=len(pos_weights))
             blue_palete = blue_palete[::-1]
             data = pd.concat(all_data)
@@ -298,6 +297,8 @@ class SurvLimeExplainer:
 
         ax.spines["top"].set_visible(False)
         ax.spines["right"].set_visible(False)
+        ax.yaxis.grid(True)
+        ax.xaxis.grid(True)
 
         if figure_path is not None:
             plt.savefig(figure_path, dpi=200, bbox_inches="tight")
