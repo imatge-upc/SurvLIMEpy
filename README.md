@@ -66,11 +66,17 @@ We choose to ensure the integration of these algorithms with **SurvLIMEpy** as t
 ## Citations
 Please if you use this package, do not forget to cite us:
 ```
-@article{pachon2023survlimepy,
-  title={SurvLIMEpy: A Python package implementing SurvLIME},
-  author={Pach{\'o}n-Garc{\'\i}a, Cristian and Hern{\'a}ndez-P{\'e}rez, Carlos and Delicado, Pedro and Vilaplana, Ver{\'o}nica},
-  journal={arXiv preprint arXiv:2302.10571},
-  year={2023}
+@article{PACHONGARCIA2024121620,title = {SurvLIMEpy: A Python package implementing SurvLIME},
+journal = {Expert Systems with Applications},
+volume = {237},
+pages = {121620},
+year = {2024},
+issn = {0957-4174},
+doi = {https://doi.org/10.1016/j.eswa.2023.121620},
+url = {https://www.sciencedirect.com/science/article/pii/S095741742302122X},
+author = {Cristian Pachón-García and Carlos Hernández-Pérez and Pedro Delicado and Verónica Vilaplana},
+keywords = {Interpretable machine learning, eXplainable artificial intelligence, Survival analysis, Machine learning, },
+abstract = {In this paper we present SurvLIMEpy, an open-source Python package that implements the SurvLIME algorithm. This method allows to compute local feature importance for machine learning algorithms designed for modelling Survival Analysis data. The presented implementation uses a matrix-wise formulation, which allows to speed up the execution time. Additionally, SurvLIMEpy assists the user with visualisation tools to better understand the result of the algorithm. The package supports a wide variety of survival models, from the Cox Proportional Hazards Model to deep learning models such as DeepHit or DeepSurv. Two types of experiments are presented in this paper. First, by means of simulated data, we study the ability of the algorithm to capture the importance of the features. Second, we use three open source survival datasets together with a set of survival algorithms in order to demonstrate how SurvLIMEpy behaves when applied to different models.}
 }
 ```
 
