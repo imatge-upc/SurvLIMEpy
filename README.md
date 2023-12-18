@@ -110,3 +110,8 @@ abstract = {In this paper we present SurvLIMEpy, an open-source Python package t
 *xgbse*: Davi Vieira, Gabriel Gimenez, Guilherme Marmerola, & Vitor Estima. (2020). XGBoost Survival Embeddings: improving statistical properties of XGBoost survival analysis implementation.
 
 *pycox*: Håvard Kvamme, Ørnulf Borgan, and Ida Scheel. Time-to-event prediction with neural networks and Cox regression. Journal of Machine Learning Research, 20(129):1–30, 2019.
+
+
+### Acknowledgments
+This research was supported by the Spanish Research Agency (AEI) under projects PID2020-116294GB-I00 and PID2020-116907RB-I00 of the call MCIN/ AEI /10.13039/501100011033, 
+AGAUR 2021 SGR 00613, UPC AGRUPS-2022, the project 718/C/2019 funded by Fundació la Marato de TV3 and the grant 2020 FI SDUR 306 funded by AGAUR.
