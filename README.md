@@ -113,5 +113,5 @@ abstract = {In this paper we present SurvLIMEpy, an open-source Python package t
 
 
 ### Acknowledgments
-This research was supported by the Spanish Research Agency (AEI) under projects PID2020-116294GB-I00 and PID2020-116907RB-I00 of the call MCIN/ AEI /10.13039/501100011033, 
-AGAUR 2021 SGR 00613, UPC AGRUPS-2022, the project 718/C/2019 funded by Fundació la Marato de TV3 and the grant 2020 FI SDUR 306 funded by AGAUR.
+This research was supported by the Spanish Research Agency (AEI) under projects PID2020-116294GB-I00 and PID2020-116907RB-I00 of the call MCIN/ AEI /10.13039/501100011033, the project 718/C/2019 with code 201923-31 funded by Fundació la Marato de TV3 and the grant 2020 FI SDUR 306 funded by AGAUR.
+
