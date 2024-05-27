@@ -50,7 +50,7 @@ explainer = SurvLimeExplainer(
 explanation = explainer.explain_instance(
     data_row=test[0].iloc[0],
     predict_fn=model.predict_cumulative_hazard_function,
-    num_samples=1000,
+    num_samples=500,
 )
 print(explanation)
 
