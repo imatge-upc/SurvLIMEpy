@@ -43,7 +43,7 @@ explainer = SurvLimeExplainer(
     training_features=training_features,
     training_events=training_events,
     training_times=training_times,
-    model_output_times=model.event_times_,
+    model_output_times=model.unique_times_,
 )
 
 # explanation variable will have the computed SurvLIME values

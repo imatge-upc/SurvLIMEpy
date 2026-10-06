@@ -125,7 +125,7 @@ class SurvLimeExplainer:
             total_dimensions_data_row = len(data_row.shape)
             total_rows = data_row.shape[0]
             if total_dimensions_data_row == 1:
-                self.data_point = np.reshape(data_row, newshape=(1, -1))
+                self.data_point = np.reshape(data_row, (1, -1))
             elif total_dimensions_data_row == 2:
                 if total_rows > 1:
                     raise ValueError("data_point must contain a single row.")
@@ -230,7 +230,7 @@ class SurvLimeExplainer:
         # sort weights in descending order
         idx_sort = np.argsort(weights)[::-1]
         sorted_weights = weights[idx_sort]
-        sign = np.reshape(np.array(sign), newshape=sorted_weights.shape)
+        sign = np.reshape(np.array(sign), sorted_weights.shape)
         sorted_signs = sign[idx_sort]
 
         # sort feature names so that they match the sorted weights
@@ -341,7 +341,7 @@ class SurvLimeExplainer:
                 n_rows = 1
             else:
                 n_rows = data.shape[0]
-            data_transformed = np.reshape(data, newshape=(n_rows, -1))
+            data_transformed = np.reshape(data, (n_rows, -1))
         elif isinstance(data, list):
             data_transformed = np.array(data).reshape(1, -1)
         else:

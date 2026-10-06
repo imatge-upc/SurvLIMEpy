@@ -225,7 +225,7 @@ class RandomSurvivalData:
         u = self.random_state.uniform(size=(num_points, 1))
         lamba_val = self.lambda_weibull
         v = self.v_weibull
-        b = np.reshape(self.coefficients, newshape=(len(self.coefficients), 1))
+        b = np.reshape(self.coefficients, (len(self.coefficients), 1))
         num = -np.log(u)
         den = lamba_val * np.exp(np.dot(X, b))
         # Use a Weibull distribution

@@ -111,7 +111,7 @@ class OptFuncionMaker:
             elif isinstance(H0, np.ndarray):
                 total_dimensions_H0 = len(H0.shape)
                 if total_dimensions_H0 == 1:
-                    self.H0 = np.reshape(H0, newshape=(-1, 1))
+                    self.H0 = np.reshape(H0, (-1, 1))
                 elif total_dimensions_H0 == 2:
                     if self.H0.shape[1] > 1:
                         raise ValueError("H0 must contain a single column.")
@@ -183,7 +183,7 @@ class OptFuncionMaker:
         nelson_aalen = nelson_aalen_estimator(event, time)
         H0 = nelson_aalen[1]
         m = H0.shape[0]
-        H0 = np.reshape(H0, newshape=(m, 1))
+        H0 = np.reshape(H0, (m, 1))
         return H0
 
     def weighted_euclidean_distance(self, x: np.ndarray, y: np.ndarray) -> np.ndarray:
@@ -230,7 +230,7 @@ class OptFuncionMaker:
             self.neighbours, self.data_point, metric=self.weighted_euclidean_distance
         ).ravel()
         weights = self.kernel_fn(distances)
-        w = np.reshape(weights, newshape=(self.num_samples, 1))
+        w = np.reshape(weights, (self.num_samples, 1))
         return w
 
     def get_predictions(self) -> np.ndarray:
@@ -262,7 +262,7 @@ class OptFuncionMaker:
             H_score = np.clip(
                 a=H_score, a_min=None, a_max=self.max_hazard_value_allowed
             )
-        H = np.reshape(np.array(H_score), newshape=(self.num_samples, self.m))
+        H = np.reshape(np.array(H_score), (self.num_samples, self.m))
         return H
 
     def get_delta_t(self) -> np.ndarray:
@@ -278,7 +278,7 @@ class OptFuncionMaker:
         t[: self.m, 0] = self.unique_times_to_event
         t[self.m, 0] = t[self.m - 1, 0] + self.epsilon
         delta_t = [t[i + 1, 0] - t[i, 0] for i in range(self.m)]
-        delta_t = np.reshape(np.array(delta_t), newshape=(self.m, 1))
+        delta_t = np.reshape(np.array(delta_t), (self.m, 1))
         if self.max_difference_time_allowed is not None:
             delta_t = np.clip(
                 a=delta_t, a_min=None, a_max=self.max_difference_time_allowed

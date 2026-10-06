@@ -105,7 +105,7 @@ def test_montecarlo_simulation() -> None:
         training_features=X,
         training_events=[tp[0] for tp in y],
         training_times=[tp[1] for tp in y],
-        model_output_times=cox.event_times_,
+        model_output_times=cox.unique_times_,
         random_state=10,
     )
 
@@ -201,7 +201,7 @@ def compute_weights(
         events,
         times,
         functional_norm=norm,
-        model_output_times=model.event_times_,
+        model_output_times=model.unique_times_,
     )
 
     num_pat = 1000
